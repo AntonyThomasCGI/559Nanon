@@ -1,0 +1,20 @@
+TEMPLATE = lib
+
+unix | macx {
+  MAYA_DIR = ""
+}
+win32 {
+  MAYA_DIR = C:/Program Files/Autodesk/Maya2022
+}
+
+CONFIG += qt warn_on release plugin
+
+LIBS		+= -L"$${MAYA_DIR}/lib" -lOpenMaya -lFoundation
+DEFINES		+= NDEBUG _WINDOWS NT_PLUGIN 
+INCLUDEPATH	+= . src
+QMAKE_LFLAGS	= /SUBSYSTEM:WINDOWS
+_CFLAGS		= /FD /GS
+QMAKE_CFLAGS	+= $${_CFLAGS}
+QMAKE_CXXFLAGS	+= $${_CFLAGS}
+TARGET_EXT	= .mll
+DESTDIR     = plugins
