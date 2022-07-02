@@ -1,6 +1,6 @@
 include(qtconfig)
 
-QT += widgets
+QT += widgets gui
 
 TARGET = nanon
 

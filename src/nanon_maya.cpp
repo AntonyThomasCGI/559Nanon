@@ -4,30 +4,43 @@
 #include <maya/MObject.h>
 #include <maya/MFnPlugin.h>
 #include <maya/MGlobal.h>
+#include <maya/MMessage.h>
+#include <maya/MString.h>
 
+QPointer<NanonWindow> NanonCmd::nanon;
 
-QPointer<NanonEditor>    NanonCmd::editor;
+const MString NanonCmd::commandName("nanon");
 
-const MString            NanonCmd::commandName("nanon");
-
+MCallbackId outputCallbackId;
 
 //    Destroy the button window, if it still exists.
 void NanonCmd::cleanup()
 {
-    if (!editor.isNull()) delete editor;
+    if (!nanon.isNull()) delete nanon;
+
+    MMessage::removeCallback(outputCallbackId);
+}
+
+
+
+void NanonCmd::outputCallback(const MString &message, MCommandMessage::MessageType messageType)
+{
+    QString text = QString(message.asChar());
+    nanon->appendOutput(text);
 }
 
 
 
 MStatus NanonCmd::doIt(const MArgList& /* args */)
 {
-    if (editor.isNull()) {
-        editor = new NanonEditor();
-        editor->show();
+    if (nanon.isNull()) {
+        nanon = new NanonWindow();
+        nanon->show();
+        outputCallbackId = MCommandMessage::addCommandOutputCallback((MCommandMessage::MMessageFunction) outputCallback);
     }
     else {
-        editor->showNormal();
-        editor->raise();
+        nanon->showNormal();
+        nanon->raise();
     }
 
 
@@ -100,4 +113,3 @@ MStatus uninitializePlugin(MObject plugin)
 
     return st;
 }
-
