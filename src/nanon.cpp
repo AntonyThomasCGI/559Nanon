@@ -1,6 +1,7 @@
-#include <stdio.h>
 
 #include "nanon.hpp"
+
+#include <iostream>
 
 #include <QtWidgets/QStatusBar>
 #include <QtWidgets/QHBoxLayout>
@@ -26,13 +27,16 @@ NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
 int NanonEditor::lineNumberAreaWidth()
 {
     int digits = 1;
+    int spacePadding = 0;
     int max = qMax(1, blockCount());
     while (max >= 10) {
         max /= 10;
         ++digits;
+        if ((digits - 1) % 3 == 0) ++spacePadding;
     }
+    digits = digits + spacePadding;
 
-    int space = 16 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * std::max(digits, 5);
+    int space = 12 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * qMax(digits, 5);
 
     return space;
 }
@@ -117,6 +121,11 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
             if ((blockNumber + 1) % 10 == 0 || blockNumber == 0) {
                 painter.setPen(QColor(191, 255, 0, 255));
                 QString number = QString::number(blockNumber + 1);
+                for (int i = number.length() - 3; i > 0; i = i - 3)
+                {
+                    number.insert(i, " ");
+                }
+                // std::cout << qUtf8Printable(modPart) << std::endl;
                 painter.drawText(0, top, lineNumberArea->width() -13, fontMetrics().height(),
                              Qt::AlignRight, number);
             } else {
@@ -137,6 +146,8 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
         ++blockNumber;
     }
 }
+
+
 
 
 NanonWindow::NanonWindow(QWidget* parent)
@@ -173,6 +184,8 @@ NanonWindow::NanonWindow(QWidget* parent)
     // centralWidget()->setLayout(layout);
 
     createStatusBar();
+
+    setSyntaxFromFile("C:\\dev\\559Nanon\\pip-requirements.tmLanguage.json");
 }
 
 NanonWindow::~NanonWindow()
@@ -205,4 +218,17 @@ void NanonWindow::resizeEvent(QResizeEvent *ev)
     // hacky work around for monospace being lost on window change.
     setMonospaced(outputWindow);
     setMonospaced(editor);
+}
+
+void NanonWindow::setSyntaxFromFile(QString fileName)
+{
+    std::optional<QJsonDocument> doc = parseJsonFile(fileName);
+    if (!doc) {
+        // TODO: read default file?
+        // TODO: edit status bar?
+        return;
+    };
+
+    QMap<QString, QVariant> map = doc.value().toVariant().toMap();
+    std::cout << qUtf8Printable(map["scopeName"].toString()) << std::endl;
 }

@@ -1,11 +1,10 @@
-#ifndef REDACT_HPP_INCLUDED
-#define REDACT_HPP_INCLUDED
+#ifndef NANON_HPP_INCLUDED
+#define NANON_HPP_INCLUDED
+
+#include "nanon_utils.hpp"
 
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QPlainTextEdit>
-
-
-
 
 
 class NanonEditor : public QPlainTextEdit
@@ -34,7 +33,7 @@ private:
 class LineNumberArea : public QWidget
 {
 public:
-    LineNumberArea(NanonEditor *editor) : QWidget(editor), codeEditor(editor)   
+    LineNumberArea(NanonEditor *editor) : QWidget(editor), codeEditor(editor)
     {}
 
     QSize sizeHint() const override
@@ -53,6 +52,34 @@ private:
 };
 
 
+// class Highlighter : public QSyntaxHighlighter
+// {
+//     Q_OBJECT
+
+// public:
+//     Highlighter(QTextDocument *parent = 0);
+
+// protected:
+//     void highlightBlock(const QString &text) override;
+
+// private:
+//     struct HighlightingRule
+//     {
+//         QRegularExpression pattern;
+//         QTextCharFormat format;
+//     };
+//     QVector<HighlightingRule> highlightingRules;
+
+//     QRegularExpression commentStartExpression;
+//     QRegularExpression commentEndExpression;
+
+//     QTextCharFormat keywordFormat;
+//     QTextCharFormat classFormat;
+//     QTextCharFormat singleLineCommentFormat;
+//     QTextCharFormat multiLineCommentFormat;
+//     QTextCharFormat quotationFormat;
+//     QTextCharFormat functionFormat;
+// };
 
 
 
@@ -65,6 +92,7 @@ public:
     virtual ~NanonWindow();
 
 	void appendOutput(QString text);
+    void setSyntaxFromFile(QString fileName);
 
 protected:
     void resizeEvent(QResizeEvent *ev) override;

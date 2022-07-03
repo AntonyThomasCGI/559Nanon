@@ -1,5 +1,5 @@
-#ifndef REDACT_MAYA_INCLUDED
-#define REDACT_MAYA_INCLUDED
+#ifndef NANON_MAYA_INCLUDED
+#define NANON_MAYA_INCLUDED
 
 #include "nanon.hpp"
 

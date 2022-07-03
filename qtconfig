@@ -7,11 +7,11 @@ win32 {
   MAYA_DIR = C:/Program Files/Autodesk/Maya2022
 }
 
-CONFIG += qt warn_on release plugin
+CONFIG += qt warn_on release plugin c++17
 
 LIBS		+= -L"$${MAYA_DIR}/lib" -lOpenMaya -lFoundation
-DEFINES		+= NDEBUG _WINDOWS NT_PLUGIN 
-INCLUDEPATH	+= . src
+DEFINES		+= NDEBUG _WINDOWS NT_PLUGIN
+INCLUDEPATH	+= .
 QMAKE_LFLAGS	= /SUBSYSTEM:WINDOWS
 _CFLAGS		= /FD /GS
 QMAKE_CFLAGS	+= $${_CFLAGS}
