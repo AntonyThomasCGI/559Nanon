@@ -1,5 +1,4 @@
-#ifndef NANON_MAYA_INCLUDED
-#define NANON_MAYA_INCLUDED
+#pragma once
 
 #include "nanon.hpp"
 
@@ -21,5 +20,3 @@ public:
     static QPointer<NanonWindow> nanon;
     static const MString commandName;
 };
-
-#endif

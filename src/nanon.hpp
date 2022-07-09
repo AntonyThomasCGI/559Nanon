@@ -1,10 +1,11 @@
-#ifndef NANON_HPP_INCLUDED
-#define NANON_HPP_INCLUDED
+#pragma once
 
-#include "nanon_utils.hpp"
+#include "io/nanon_textmate.hpp"
 
+#include <QtCore/QRegularExpression>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QPlainTextEdit>
+#include <QtGui/QSyntaxHighlighter>
 
 
 class NanonEditor : public QPlainTextEdit
@@ -52,34 +53,55 @@ private:
 };
 
 
-// class Highlighter : public QSyntaxHighlighter
-// {
-//     Q_OBJECT
+struct Rule {
+    QString name;
+    QString match;
+    QString begin;
+    QString end;
+    QString while_;
+    QString include;
+    QString contentName;
+    std::vector<Rule> captures;  // TODO add tuple? index of captures.
+    std::vector<Rule> beginCaptures;
+    std::vector<Rule> endCaptures;
+    std::vector<Rule> whileCaptures;
+    std::vector<Rule> patterns;
+};
 
-// public:
-//     Highlighter(QTextDocument *parent = 0);
+class Highlighter : public QSyntaxHighlighter
+{
+    Q_OBJECT
 
-// protected:
-//     void highlightBlock(const QString &text) override;
+public:
+    Highlighter(QTextDocument *parent = 0);
 
-// private:
-//     struct HighlightingRule
-//     {
-//         QRegularExpression pattern;
-//         QTextCharFormat format;
-//     };
-//     QVector<HighlightingRule> highlightingRules;
+protected:
+    void highlightBlock(const QString &text) override;
 
-//     QRegularExpression commentStartExpression;
-//     QRegularExpression commentEndExpression;
+private:
+    struct HighlightingRule
+    {
+        QRegularExpression pattern;
+        QTextCharFormat format;
+    };
 
-//     QTextCharFormat keywordFormat;
-//     QTextCharFormat classFormat;
-//     QTextCharFormat singleLineCommentFormat;
-//     QTextCharFormat multiLineCommentFormat;
-//     QTextCharFormat quotationFormat;
-//     QTextCharFormat functionFormat;
-// };
+
+    Rule makeRule(QMap<QString, QVariant> map);
+
+    QVector<HighlightingRule> highlightingRules;
+
+    void setSyntaxFromFile(QString fileName);
+
+    // QRegularExpression commentStartExpression;
+    // QRegularExpression commentEndExpression;
+
+    QTextCharFormat keywordFormat;
+    // QTextCharFormat classFormat;
+    // QTextCharFormat singleLineCommentFormat;
+    // QTextCharFormat multiLineCommentFormat;
+    // QTextCharFormat quotationFormat;
+    // QTextCharFormat functionFormat;
+};
 
 
 
@@ -92,7 +114,6 @@ public:
     virtual ~NanonWindow();
 
 	void appendOutput(QString text);
-    void setSyntaxFromFile(QString fileName);
 
 protected:
     void resizeEvent(QResizeEvent *ev) override;
@@ -105,11 +126,9 @@ private:
 
     NanonEditor *editor;
 
+    Highlighter *highlighter;
+
     // QHBoxLayout    *layout;
     // QPlainTextEdit *outputWindow;
     // QPlainTextEdit *editor;
 };
-
-
-
-#endif
