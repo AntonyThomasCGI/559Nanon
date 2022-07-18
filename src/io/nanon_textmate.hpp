@@ -4,7 +4,7 @@
 #include <QtCore/QVariant>
 
 struct TextMateParseError {
-    enum ParseError {NoError, IOFailure, InvalidJson};
+    enum ParseError {NoError, IOFailure, InvalidJson, InvalidPList};
     TextMateParseError::ParseError error;
 
     TextMateParseError() : error(TextMateParseError::NoError) {}
