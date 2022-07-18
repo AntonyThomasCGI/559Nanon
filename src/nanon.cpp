@@ -224,7 +224,8 @@ void NanonWindow::resizeEvent(QResizeEvent *ev)
 Highlighter::Highlighter(QTextDocument *parent)
     : QSyntaxHighlighter(parent)
 {
-    QString file = "C:\\dev\\559Nanon\\pip-requirements.tmLanguage.json";
+    // QString file = "C:\\dev\\559Nanon\\pip-requirements.tmLanguage.json";
+    QString file = "C:\\dev\\559Nanon\\Python.tmLanguage";
     this->setSyntaxFromFile(file);
 }
 
@@ -267,8 +268,11 @@ Rule Highlighter::makeRule(QMap<QString, QVariant> map)
 
     if (map.contains("name"))
         rule.name = map.value("name").toString();
-    if (map.contains("match"))
+    if (map.contains("match")) {
+        std::cout << "yes match" << std::endl;
         rule.match = map.value("match").toString();
+        std::cout << qUtf8Printable(map.value("match").toString()) << std::endl;
+    }
     if (map.contains("begin"))
         rule.begin = map.value("begin").toString();
     if (map.contains("end"))
@@ -281,8 +285,10 @@ Rule Highlighter::makeRule(QMap<QString, QVariant> map)
         rule.contentName = map.value("contentName").toString();
 
     if (map.contains("patterns")) {
+        std::cout << "yes patterns" << std::endl;
         QList<QVariant> allPatterns = map.value("patterns").toList();
         for (int i = 0; i < allPatterns.size(); ++i) {
+            std::cout << "here" << std::endl;
             QMap<QString, QVariant> patternMap = allPatterns.at(i).toMap();
             rule.patterns.push_back(makeRule(patternMap));
         }
@@ -335,16 +341,43 @@ Rule Highlighter::makeRule(QMap<QString, QVariant> map)
 void Highlighter::setSyntaxFromFile(QString fileName)
 {
     TextMateParseError err;
+    std::cout << std::endl << "=== start ===" << std::endl;
 
     TextMateParser tmParser = TextMateParser();
     QVariant tmData = tmParser.parse(fileName, err);
     if (err.error != TextMateParseError::ParseError::NoError) {
         std::cout << "ERROR: " << qUtf8Printable(err.errorString) << std::endl;
+        return;
     }
 
     QMap<QString, QVariant> map = tmData.toMap();
     // std::cout << qUtf8Printable(map["scopeName"].toString()) << std::endl;
     // Rule rule = makeRule(map);
+
+    // std::cout << std::endl << "--ok print entire map--" << std::endl;
+
+
+    // QMapIterator<QString, QVariant> i(map);
+    // while (i.hasNext()) {
+    //     i.next();
+    //     if (i.key() == "a") {
+    //         std::cout << qUtf8Printable(i.key()) << ": "<< qUtf8Printable(i.value().toString()) << std::endl;
+    //     } else if (i.key() == "patterns") {
+    //         QList<QVariant> allPatterns = i.value().toList();
+    //         for (int j = 0; j < allPatterns.size(); ++j) {
+    //             QMap<QString, QVariant> pattern = allPatterns.at(j).toMap();
+    //             QMapIterator<QString, QVariant> k(pattern);
+    //             while (k.hasNext()) {
+    //                 k.next();
+    //                 if (k.key() == "match") {
+    //                     std::cout << "    " << qUtf8Printable(k.key()) << ": " << qUtf8Printable(k.value().toString()) << std::endl;
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
+
     Rule rule = this->makeRule(map);
 
     HighlightingRule highlightRule;
@@ -352,11 +385,13 @@ void Highlighter::setSyntaxFromFile(QString fileName)
 
     std::vector<QString> kwPatterns;
     std::vector<Rule> toParse = rule.patterns;
+    std::cout << "=======================" << std::endl;
 
     while (toParse.size())
     {
         Rule thisRule = toParse.back();
         // if (thisRule.match)
+        std::cout << qUtf8Printable(thisRule.match) << std::endl;
         kwPatterns.push_back(thisRule.match);
 
         toParse.pop_back();

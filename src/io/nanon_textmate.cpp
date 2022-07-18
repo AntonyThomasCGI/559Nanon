@@ -3,8 +3,9 @@
 
 #include <iostream>
 
-#include <QtCore/QJsonParseError>
 #include <QtCore/QFile>
+#include <QtCore/QJsonParseError>
+#include <QtCore/QXmlStreamReader>
 
 
 TextMateParser::TextMateParser()
@@ -15,10 +16,10 @@ TextMateParser::~TextMateParser()
 
 QVariant TextMateParser::parse(QString filename, TextMateParseError &err)
 {
-    if (filename.endsWith(QString(".json"))) {
+    if (filename.endsWith(".json")) {
         return parseJSON(filename, err);
     } else {
-        return parseXML(filename, err);
+        return parsePList(filename, err);
     }
 }
 
@@ -28,7 +29,7 @@ QVariant TextMateParser::parseJSON(QString filename, TextMateParseError &err)
     file.setFileName(filename);
     if (!file.open(QIODevice::ReadOnly))
     {
-        err.errorString = QString("Failed to open file: ") + filename;
+        err.errorString = "Failed to open file: " + filename;
         err.error = TextMateParseError::ParseError::IOFailure;
         return QVariant();
     }
@@ -46,33 +47,93 @@ QVariant TextMateParser::parseJSON(QString filename, TextMateParseError &err)
 }
 
 
-QVariant TextMateParser::parseXML(QString filename, TextMateParseError &err)
-{
-    std::cout << "parseXML not implemented!" << std::endl;
+// void readString(QXmlStreamReader *xmlRead)
+// {
+//     QString res = xmlRead->readElementText();
+// }
 
+
+QVariant parseRecursive(QXmlStreamReader *xmlRead)
+{
+    // std::cout << "parseRecursive" << std::endl;
+    if (xmlRead->atEnd() || xmlRead->hasError()) {
+        // std::cout << "END OR ERROR" << std::endl;
+        return QVariant();
+    }
+
+    QXmlStreamReader::TokenType token = xmlRead->readNext();
+    // std::cout << "token type: " << qUtf8Printable(xmlRead->tokenString()) << std::endl;
+
+    if (token == QXmlStreamReader::StartDocument || token == QXmlStreamReader::DTD || token == QXmlStreamReader::Characters)
+        return parseRecursive(xmlRead);
+    if (token == QXmlStreamReader::EndElement)
+        return QVariant();
+
+    if (token == QXmlStreamReader::StartElement) {
+        // std::cout << "se type: " << qUtf8Printable(xmlRead->name().toString()) << std::endl;
+        if (xmlRead->name() == "string" || xmlRead->name() == "key") {
+            return QString(xmlRead->readElementText());
+        }
+        if (xmlRead->name() == "array") {
+            QList<QVariant> arrayResult;
+            // QVariant arrayValue;
+            while (true) {
+            // while ((arrayValue = parseRecursive(xmlRead)).isValid()) {
+                // std::cout << "start parse array" << std::endl;
+                QVariant arrayValue = parseRecursive(xmlRead);
+                // std::cout << "got array item " << std::endl;
+                if (arrayValue.isNull()) {
+                    // std::cout << "break array!" << std::endl;
+                    break;
+                }
+                // std::cout << "append value" << std::endl;
+                arrayResult.append(arrayValue);
+            }
+            return arrayResult;
+        }
+        if (xmlRead->name() == "dict") {
+            // std::cout << "in dict" << std::endl;
+            QMap<QString, QVariant> dictResult;
+            while (true) {
+                QVariant key = parseRecursive(xmlRead);
+                if (key.isNull()) {
+                    // std::cout << "break dict!" << std::endl;
+                    break;
+                }
+                QVariant value = parseRecursive(xmlRead);
+                // std::cout << "key: " << qUtf8Printable(key.toString()) << std::endl;
+                // // std::cout << "value: " << qUtf8Printable(value.toString()) << std::endl;
+                // if (key.isNull() || value.isNull()) {
+                //     break;
+                // }
+                dictResult.insert(key.toString(), value);
+            }
+            return dictResult;
+        }
+        return parseRecursive(xmlRead);
+    }
     return QVariant();
 }
 
 
 
+QVariant TextMateParser::parsePList(QString filename, TextMateParseError &err)
+{
+    QFile file;
+    file.setFileName(filename);
+    if (!file.open(QIODevice::ReadOnly))
+    {
+        err.errorString = "Failed to open file: " + filename;
+        err.error = TextMateParseError::ParseError::IOFailure;
+        return QVariant();
+    }
+    QXmlStreamReader *xmlRead = new QXmlStreamReader(&file);
 
-// std::optional<QJsonDocument> parseJsonFile(QString fileName)
-// {
-//     QFile file;
-//     file.setFileName(fileName);
-//     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-//         std::cout << "WARN: Failed to open file!" << std::endl;
-//         return {};
-//     }
+    QVariant result = parseRecursive(xmlRead);
 
-//     QJsonParseError jsonError;
-//     QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &jsonError);
-//     if (jsonError.error != QJsonParseError::NoError) {
-//         std::cout << "WARN: Could not parse json file: " << qUtf8Printable(jsonError.errorString()) << std::endl;
-//         file.close();
-//         return {};
-//     };
-//     file.close();
+    return result;
+}
 
-//     return doc;
+// void readNext(QString name) {
+//     std::cout << "hi" << std::endl;
 // }

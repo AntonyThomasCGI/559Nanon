@@ -21,8 +21,7 @@ public:
 
     QVariant parse(QString filename, TextMateParseError &err);
 
-    QVariant parseXML(QString filename, TextMateParseError &err);
+    QVariant parsePList(QString filename, TextMateParseError &err);
 
     QVariant parseJSON(QString filename, TextMateParseError &err);
 };
-
