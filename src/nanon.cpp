@@ -11,6 +11,7 @@
 #include <QtWidgets/QSplitter>
 #include <QtGui/QPainter>
 #include <QtGui/QTextBlock>
+#include <QtCore/QTimer>
 
 
 NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
@@ -187,6 +188,38 @@ NanonWindow::NanonWindow(QWidget* parent)
     // centralWidget()->setLayout(layout);
 
     createStatusBar();
+
+    QString tempText = R""""(def hi():
+	pass
+
+print('hi')
+
+#comment . asd
+print('next') # comment
+'
+wow this did not work
+
+lmao
+time to unexist myself
+' hi '
+more' done
+
+'the quick brown fox jumps over the lazy dog'
+
+"the quick brown fox jumps over the lazy dog"
+
+"hi"
+
+async def my_func():
+	pass
+
+
+
+
+
+
+)"""";
+    editor->setPlainText(tempText);
 }
 
 NanonWindow::~NanonWindow()
@@ -225,20 +258,178 @@ Highlighter::Highlighter(QTextDocument *parent)
     : QSyntaxHighlighter(parent)
 {
     // QString file = "C:\\dev\\559Nanon\\pip-requirements.tmLanguage.json";
-    QString file = "C:\\dev\\559Nanon\\Python.tmLanguage";
+    // QString file = "C:\\dev\\559Nanon\\Python.tmLanguage";
+    QString file = "C:\\dev\\559Nanon\\test.tmLanguage.json";
+
     this->setSyntaxFromFile(file);
 }
 
+
+// void Highlighter::reformatBlocks(int from, int charsRemoved, int charsAdded)
+// {
+//     QTextBlock block = doc->findBlock(from);
+//     if (!block.isValid())
+//         return;
+
+//     int endPosition;
+// }
+
+// void Highlighter::setDocument(QTextDocument *doc)
+// {
+//     if (doc) {
+//         disconnect(doc, SIGNAL(contentsChange(int,int,int)),
+//                    this, SLOT(reformatBlocks(int,int,int)));
+//         QTextCursor cursor(doc);
+//         cursor.beginEditBlock();
+//         for (QTextBlock blk = doc->begin(); blk.isValid(); blk = blk.next())
+//             blk.layout()->clearFormats();
+//         cursor.endEditBlock();
+//     }
+//     doc = doc;
+//     // if (doc) {
+//     //     connect(doc, SIGNAL(contentsChange(int,int,int)),
+//     //             this, SLOT(_q_reformatBlocks(int,int,int)));
+//     //     if (!doc->isEmpty()) {
+//     //         // this->rehighlightPending = true;
+//     //         QTimer::singleShot(0, this, SLOT(_q_delayedRehighlight()));
+//     //     }
+//     // }
+// }
+
+ScopeBlockData* Highlighter::previousBlockUserData() const
+{
+    const QTextBlock thisBlock = currentBlock();
+    if (!thisBlock.isValid())
+        return {};
+
+    const QTextBlock previous = thisBlock.previous();
+    ScopeBlockData *data = dynamic_cast<ScopeBlockData*> (previous.userData());
+
+    return data;
+}
+
+
 void Highlighter::highlightBlock(const QString &text)
 {
-    for (const HighlightingRule &rule : qAsConst(highlightingRules)) {
-        QRegularExpressionMatchIterator matchIterator = rule.pattern.globalMatch(text);
-        while (matchIterator.hasNext()) {
-            QRegularExpressionMatch match = matchIterator.next();
-            setFormat(match.capturedStart(), match.capturedLength(), rule.format);
+    // for (const HighlightingRule &rule : qAsConst(highlightingRules)) {
+    //     QRegularExpressionMatchIterator matchIterator = rule.pattern.globalMatch(text);
+    //     while (matchIterator.hasNext()) {
+    //         QRegularExpressionMatch match = matchIterator.next();
+    //         setFormat(match.capturedStart(), match.capturedLength(), rule.format);
+    //     }
+    // }
+
+    for (Rule & pattern : rule.patterns) {
+        if (pattern.match != QRegularExpression{}) {
+            QRegularExpressionMatchIterator matchIterator = pattern.match.globalMatch(text);
+            while (matchIterator.hasNext()) {
+                QRegularExpressionMatch match = matchIterator.next();
+                setFormat(match.capturedStart(), match.capturedLength(), keywordFormat);
+            }
         }
     }
 
+    // QVector<QString>::iterator scopeIt;
+    // // QVector<QString> toRemove;
+    // for (scopeIt = scopes.begin(); scopeIt != scopes.end(); ++scopeIt) {
+    //     QString scopeName = *scopeIt;
+    //     for (Rule & pattern : rule.patterns) {
+    //         if (pattern.name == scopeName) {  // Found pattern for existing scope.
+    //             // Try to match end of scope.
+    //             QRegularExpressionMatch match = pattern.end.match(text);
+    //             int endIndex = match.capturedStart();
+    //             if (endIndex > -1) {
+    //                 // End of capture found, remove from scopes.
+    //                 int scopeLength = endIndex + match.capturedLength();
+    //                 setFormat(0, scopeLength, multiLineFormat);
+    //                 // scopeIt = scopes.erase(scopeIt);
+    //                 // toRemove.push_back(scopeName);
+    //             } else {
+    //                 // Not found, set whole line.
+    //                 setFormat(0, text.length(), multiLineFormat);
+    //             }
+    //             break;
+    //         }
+    //     }
+    // }
+    // if (scopes.length()) {
+    //     QVector<QString>::iterator scopeIt;
+    //     for (scopeIt = scopes.begin(); scopeIt != scopes.end(); ++scopeIt) {
+    //         scopeIt = scopes.erase(scopeIt);
+    //     }
+    // }
+    // QTextBlock thisBlock = currentBlock();
+    ScopeBlockData *scopeData = previousBlockUserData();
+    QVector<QString> scopes;
+    if (scopeData != NULL) {
+        scopes = scopeData->scopes;
+    }
+
+    ScopeBlockData *nextScopeData = new ScopeBlockData;
+    std::cout << "copying" << std::endl;
+    for (QString str : scopes) {
+        nextScopeData->scopes.push_back(str);
+    }
+    std::cout << "done copying" << std::endl;
+
+    // Try to match non existing scopes.
+    for (Rule & pattern : rule.patterns) {
+        if (pattern.begin != QRegularExpression{} && pattern.end != QRegularExpression{} && pattern.name != QString{}) {
+            int startIndex = 0;
+
+            if (scopes.contains(pattern.name)) {  // We are already in scope.
+                QRegularExpressionMatch match = pattern.end.match(text, startIndex);
+                int endIndex = match.capturedStart();
+                if (endIndex > -1) {
+                    // End of capture found, remove from next scopes.
+                    setFormat(startIndex, endIndex + 1, multiLineFormat);
+
+                    startIndex = endIndex + 1;
+
+                    // if scopes.contains()
+                    std::cout << "REMOVE1" << std::endl;
+                    nextScopeData->scopes.removeAt(scopes.indexOf(pattern.name));
+                } else {
+                    // Not found, set whole line.
+                    setFormat(startIndex, text.length(), multiLineFormat);
+                    startIndex = text.length();
+
+                    // Check case where we found end but new scope started on same line.
+                    // if (!nextScopeData->scopes.contains(pattern.name)) {
+                    //     std::cout << "ADD1" << std::endl;
+                    //     nextScopeData->scopes.push_back(pattern.name);
+                    // }
+                }
+            }
+            printf("startI: %d\n", startIndex);
+
+            startIndex = text.indexOf(pattern.begin, startIndex);
+            while (startIndex >= 0) {
+                // printf("start index %d\n", startIndex);
+                QRegularExpressionMatch match = pattern.end.match(text, startIndex + 1);
+                int endIndex = match.capturedStart();
+                // printf("end index %d\n", endIndex);
+                int capturedLength = 0;
+                if (endIndex == -1) {  // End is not in this block, add to scopes for next block.
+                    capturedLength = text.length() - startIndex;
+                    std::cout << "ADD2" << std::endl;
+                    nextScopeData->scopes.push_back(pattern.name);
+                } else {  // End of capture found, remove from scopes.
+                    capturedLength = endIndex - startIndex + match.capturedLength();
+                }
+                setFormat(startIndex, capturedLength, multiLineFormat);
+                startIndex = text.indexOf(pattern.begin, startIndex + capturedLength);
+            }
+        }
+    }
+
+    // std::cout << "looping" << std::endl;
+
+    setCurrentBlockUserData(nextScopeData);
+
+    // for (int i = 0; i < scopes.size(); ++i) {
+    //     scopes
+    // }
     // setCurrentBlockState(0);
 
     // int startIndex = 0;
@@ -256,41 +447,38 @@ void Highlighter::highlightBlock(const QString &text)
     //         commentLength = endIndex - startIndex
     //                         + match.capturedLength();
     //     }
-    //     setFormat(startIndex, commentLength, multiLineCommentFormat);
+    //     setFormat(startIndex, commentLength, multiLineFormat);
     //     startIndex = text.indexOf(commentStartExpression, startIndex + commentLength);
     // }
 }
 
 
-Rule Highlighter::makeRule(QMap<QString, QVariant> map)
+Highlighter::Rule Highlighter::makeRule(QMap<QString, QVariant> map, int &blockStateID)
 {
     Rule rule = Rule();
 
+    rule.scopeID = blockStateID;
+    blockStateID++;
     if (map.contains("name"))
         rule.name = map.value("name").toString();
-    if (map.contains("match")) {
-        std::cout << "yes match" << std::endl;
-        rule.match = map.value("match").toString();
-        std::cout << qUtf8Printable(map.value("match").toString()) << std::endl;
-    }
+    if (map.contains("match"))
+        rule.match = QRegularExpression(map.value("match").toString());
     if (map.contains("begin"))
-        rule.begin = map.value("begin").toString();
+        rule.begin = QRegularExpression(map.value("begin").toString());
     if (map.contains("end"))
-        rule.end = map.value("end").toString();
+        rule.end = QRegularExpression(map.value("end").toString());
     if (map.contains("while"))
-        rule.while_ = map.value("while").toString();
+        rule.while_ = QRegularExpression(map.value("while").toString());
     if (map.contains("include"))
         rule.include = map.value("include").toString();
     if (map.contains("contentName"))
         rule.contentName = map.value("contentName").toString();
 
     if (map.contains("patterns")) {
-        std::cout << "yes patterns" << std::endl;
         QList<QVariant> allPatterns = map.value("patterns").toList();
         for (int i = 0; i < allPatterns.size(); ++i) {
-            std::cout << "here" << std::endl;
             QMap<QString, QVariant> patternMap = allPatterns.at(i).toMap();
-            rule.patterns.push_back(makeRule(patternMap));
+            rule.patterns.push_back(makeRule(patternMap, blockStateID));
         }
     }
 
@@ -300,7 +488,7 @@ Rule Highlighter::makeRule(QMap<QString, QVariant> map)
         while (it.hasNext()) {
             it.next();
             QMap<QString, QVariant> m = it.value().toMap();
-            rule.captures.push_back(makeRule(m));
+            rule.captures.push_back(makeRule(m, blockStateID));
         }
     }
 
@@ -310,7 +498,7 @@ Rule Highlighter::makeRule(QMap<QString, QVariant> map)
         while (it.hasNext()) {
             it.next();
             QMap<QString, QVariant> m = it.value().toMap();
-            rule.beginCaptures.push_back(makeRule(m));
+            rule.beginCaptures.push_back(makeRule(m, blockStateID));
         }
     }
 
@@ -320,7 +508,7 @@ Rule Highlighter::makeRule(QMap<QString, QVariant> map)
         while (it.hasNext()) {
             it.next();
             QMap<QString, QVariant> m = it.value().toMap();
-            rule.endCaptures.push_back(makeRule(m));
+            rule.endCaptures.push_back(makeRule(m, blockStateID));
         }
     }
 
@@ -330,7 +518,7 @@ Rule Highlighter::makeRule(QMap<QString, QVariant> map)
         while (it.hasNext()) {
             it.next();
             QMap<QString, QVariant> m = it.value().toMap();
-            rule.whileCaptures.push_back(makeRule(m));
+            rule.whileCaptures.push_back(makeRule(m, blockStateID));
         }
     }
 
@@ -377,31 +565,32 @@ void Highlighter::setSyntaxFromFile(QString fileName)
     //     }
     // }
 
+    int startId = 0;
+    rule = this->makeRule(map, startId);
 
-    Rule rule = this->makeRule(map);
-
-    HighlightingRule highlightRule;
+    // HighlightingRule highlightRule;
 
 
-    std::vector<QString> kwPatterns;
-    std::vector<Rule> toParse = rule.patterns;
-    std::cout << "=======================" << std::endl;
+    // std::vector<QString> kwPatterns;
+    // std::vector<Rule> toParse = rule.patterns;
+    // std::cout << "=======================" << std::endl;
 
-    while (toParse.size())
-    {
-        Rule thisRule = toParse.back();
-        // if (thisRule.match)
-        std::cout << qUtf8Printable(thisRule.match) << std::endl;
-        kwPatterns.push_back(thisRule.match);
+    // while (toParse.size())
+    // {
+    //     Rule thisRule = toParse.back();
+    //     std::cout << qUtf8Printable(thisRule.match) << std::endl;
+    //     if (thisRule.match != QString{}) {
+    //         kwPatterns.push_back(thisRule.match);
+    //     }
 
-        toParse.pop_back();
+    //     toParse.pop_back();
 
-        if (thisRule.patterns.size()) {
-            for (auto & pattern : thisRule.patterns) {
-                toParse.push_back(pattern);
-            }
-        }
-    }
+    //     if (thisRule.patterns.size()) {
+    //         for (auto & pattern : thisRule.patterns) {
+    //             toParse.push_back(pattern);
+    //         }
+    //     }
+    // }
 
     //  = {
     //     QStringLiteral("\\bdef\\b"),
@@ -414,12 +603,19 @@ void Highlighter::setSyntaxFromFile(QString fileName)
     //     QStringLiteral("\\blist\\b"),
     // };
     keywordFormat.setForeground(Qt::darkMagenta);
+    multiLineFormat.setForeground(Qt::green);
 
-    for (auto & pattern : kwPatterns) {
-        highlightRule.pattern = QRegularExpression(pattern);
-        highlightRule.format = keywordFormat;
-        highlightingRules.append(highlightRule);
-    }
+    // for (auto & pattern : kwPatterns) {
+    //     highlightRule.pattern = QRegularExpression(pattern);
+    //     highlightRule.format = keywordFormat;
+    //     highlightingRules.append(highlightRule);
+    // }
+
+
+    // commentStartExpression = QRegularExpression(QStringLiteral("/\\*"));
+    // commentEndExpression = QRegularExpression(QStringLiteral("\\*/"));
+
+    // multiLineCommentFormat.setForeground(Qt::red);
 
 
 
