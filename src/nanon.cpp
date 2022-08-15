@@ -57,6 +57,27 @@ void NanonEditor::resizeEvent(QResizeEvent *e)
     lineNumberArea->setGeometry(QRect(cr.left(), cr.top(), lineNumberAreaWidth(), cr.height()));
 }
 
+void NanonEditor::keyPressEvent(QKeyEvent *e)
+{
+    if (e->key() == 83 && e->modifiers() == (Qt::KeyboardModifier::AltModifier | Qt::KeyboardModifier::ShiftModifier)) {
+        std::cout << "alt+shift+s pressed!" << std::endl;
+        QTextBlock currentBlock = textCursor().block();
+        if (!currentBlock.isValid())
+            return;
+
+        QTextBlockUserData *userData = currentBlock.userData();
+        ScopeBlockData *scopeData = dynamic_cast<ScopeBlockData*> (userData);
+        if (scopeData!=NULL) {
+            std::cout << "User data:" << std::endl;
+            for (auto & scope : scopeData->scopes) {
+                std::cout << qUtf8Printable(scope) << std::endl;
+            }
+        }
+    } else {
+        QPlainTextEdit::keyPressEvent(e);
+    }
+}
+
 void NanonEditor::updateLineNumberArea(const QRect &rect, int dy)
 {
     if (dy)
@@ -254,6 +275,7 @@ void NanonWindow::resizeEvent(QResizeEvent *ev)
     setMonospaced(editor);
 }
 
+
 Highlighter::Highlighter(QTextDocument *parent)
     : QSyntaxHighlighter(parent)
 {
@@ -264,37 +286,6 @@ Highlighter::Highlighter(QTextDocument *parent)
     this->setSyntaxFromFile(file);
 }
 
-
-// void Highlighter::reformatBlocks(int from, int charsRemoved, int charsAdded)
-// {
-//     QTextBlock block = doc->findBlock(from);
-//     if (!block.isValid())
-//         return;
-
-//     int endPosition;
-// }
-
-// void Highlighter::setDocument(QTextDocument *doc)
-// {
-//     if (doc) {
-//         disconnect(doc, SIGNAL(contentsChange(int,int,int)),
-//                    this, SLOT(reformatBlocks(int,int,int)));
-//         QTextCursor cursor(doc);
-//         cursor.beginEditBlock();
-//         for (QTextBlock blk = doc->begin(); blk.isValid(); blk = blk.next())
-//             blk.layout()->clearFormats();
-//         cursor.endEditBlock();
-//     }
-//     doc = doc;
-//     // if (doc) {
-//     //     connect(doc, SIGNAL(contentsChange(int,int,int)),
-//     //             this, SLOT(_q_reformatBlocks(int,int,int)));
-//     //     if (!doc->isEmpty()) {
-//     //         // this->rehighlightPending = true;
-//     //         QTimer::singleShot(0, this, SLOT(_q_delayedRehighlight()));
-//     //     }
-//     // }
-// }
 
 ScopeBlockData* Highlighter::previousBlockUserData() const
 {
@@ -311,14 +302,6 @@ ScopeBlockData* Highlighter::previousBlockUserData() const
 
 void Highlighter::highlightBlock(const QString &text)
 {
-    // for (const HighlightingRule &rule : qAsConst(highlightingRules)) {
-    //     QRegularExpressionMatchIterator matchIterator = rule.pattern.globalMatch(text);
-    //     while (matchIterator.hasNext()) {
-    //         QRegularExpressionMatch match = matchIterator.next();
-    //         setFormat(match.capturedStart(), match.capturedLength(), rule.format);
-    //     }
-    // }
-
     for (Rule & pattern : rule.patterns) {
         if (pattern.match != QRegularExpression{}) {
             QRegularExpressionMatchIterator matchIterator = pattern.match.globalMatch(text);
@@ -329,36 +312,6 @@ void Highlighter::highlightBlock(const QString &text)
         }
     }
 
-    // QVector<QString>::iterator scopeIt;
-    // // QVector<QString> toRemove;
-    // for (scopeIt = scopes.begin(); scopeIt != scopes.end(); ++scopeIt) {
-    //     QString scopeName = *scopeIt;
-    //     for (Rule & pattern : rule.patterns) {
-    //         if (pattern.name == scopeName) {  // Found pattern for existing scope.
-    //             // Try to match end of scope.
-    //             QRegularExpressionMatch match = pattern.end.match(text);
-    //             int endIndex = match.capturedStart();
-    //             if (endIndex > -1) {
-    //                 // End of capture found, remove from scopes.
-    //                 int scopeLength = endIndex + match.capturedLength();
-    //                 setFormat(0, scopeLength, multiLineFormat);
-    //                 // scopeIt = scopes.erase(scopeIt);
-    //                 // toRemove.push_back(scopeName);
-    //             } else {
-    //                 // Not found, set whole line.
-    //                 setFormat(0, text.length(), multiLineFormat);
-    //             }
-    //             break;
-    //         }
-    //     }
-    // }
-    // if (scopes.length()) {
-    //     QVector<QString>::iterator scopeIt;
-    //     for (scopeIt = scopes.begin(); scopeIt != scopes.end(); ++scopeIt) {
-    //         scopeIt = scopes.erase(scopeIt);
-    //     }
-    // }
-    // QTextBlock thisBlock = currentBlock();
     ScopeBlockData *scopeData = previousBlockUserData();
     QVector<QString> scopes;
     if (scopeData != NULL) {
@@ -366,11 +319,9 @@ void Highlighter::highlightBlock(const QString &text)
     }
 
     ScopeBlockData *nextScopeData = new ScopeBlockData;
-    std::cout << "copying" << std::endl;
     for (QString str : scopes) {
         nextScopeData->scopes.push_back(str);
     }
-    std::cout << "done copying" << std::endl;
 
     // Try to match non existing scopes.
     for (Rule & pattern : rule.patterns) {
@@ -387,21 +338,13 @@ void Highlighter::highlightBlock(const QString &text)
                     startIndex = endIndex + 1;
 
                     // if scopes.contains()
-                    std::cout << "REMOVE1" << std::endl;
                     nextScopeData->scopes.removeAt(scopes.indexOf(pattern.name));
                 } else {
                     // Not found, set whole line.
                     setFormat(startIndex, text.length(), multiLineFormat);
                     startIndex = text.length();
-
-                    // Check case where we found end but new scope started on same line.
-                    // if (!nextScopeData->scopes.contains(pattern.name)) {
-                    //     std::cout << "ADD1" << std::endl;
-                    //     nextScopeData->scopes.push_back(pattern.name);
-                    // }
                 }
             }
-            printf("startI: %d\n", startIndex);
 
             startIndex = text.indexOf(pattern.begin, startIndex);
             while (startIndex >= 0) {
@@ -412,7 +355,6 @@ void Highlighter::highlightBlock(const QString &text)
                 int capturedLength = 0;
                 if (endIndex == -1) {  // End is not in this block, add to scopes for next block.
                     capturedLength = text.length() - startIndex;
-                    std::cout << "ADD2" << std::endl;
                     nextScopeData->scopes.push_back(pattern.name);
                 } else {  // End of capture found, remove from scopes.
                     capturedLength = endIndex - startIndex + match.capturedLength();
@@ -423,33 +365,7 @@ void Highlighter::highlightBlock(const QString &text)
         }
     }
 
-    // std::cout << "looping" << std::endl;
-
     setCurrentBlockUserData(nextScopeData);
-
-    // for (int i = 0; i < scopes.size(); ++i) {
-    //     scopes
-    // }
-    // setCurrentBlockState(0);
-
-    // int startIndex = 0;
-    // if (previousBlockState() != 1)
-    //     startIndex = text.indexOf(commentStartExpression);
-
-    // while (startIndex >= 0) {
-    //     QRegularExpressionMatch match = commentEndExpression.match(text, startIndex);
-    //     int endIndex = match.capturedStart();
-    //     int commentLength = 0;
-    //     if (endIndex == -1) {
-    //         setCurrentBlockState(1);
-    //         commentLength = text.length() - startIndex;
-    //     } else {
-    //         commentLength = endIndex - startIndex
-    //                         + match.capturedLength();
-    //     }
-    //     setFormat(startIndex, commentLength, multiLineFormat);
-    //     startIndex = text.indexOf(commentStartExpression, startIndex + commentLength);
-    // }
 }
 
 
@@ -539,105 +455,10 @@ void Highlighter::setSyntaxFromFile(QString fileName)
     }
 
     QMap<QString, QVariant> map = tmData.toMap();
-    // std::cout << qUtf8Printable(map["scopeName"].toString()) << std::endl;
-    // Rule rule = makeRule(map);
-
-    // std::cout << std::endl << "--ok print entire map--" << std::endl;
-
-
-    // QMapIterator<QString, QVariant> i(map);
-    // while (i.hasNext()) {
-    //     i.next();
-    //     if (i.key() == "a") {
-    //         std::cout << qUtf8Printable(i.key()) << ": "<< qUtf8Printable(i.value().toString()) << std::endl;
-    //     } else if (i.key() == "patterns") {
-    //         QList<QVariant> allPatterns = i.value().toList();
-    //         for (int j = 0; j < allPatterns.size(); ++j) {
-    //             QMap<QString, QVariant> pattern = allPatterns.at(j).toMap();
-    //             QMapIterator<QString, QVariant> k(pattern);
-    //             while (k.hasNext()) {
-    //                 k.next();
-    //                 if (k.key() == "match") {
-    //                     std::cout << "    " << qUtf8Printable(k.key()) << ": " << qUtf8Printable(k.value().toString()) << std::endl;
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
 
     int startId = 0;
     rule = this->makeRule(map, startId);
 
-    // HighlightingRule highlightRule;
-
-
-    // std::vector<QString> kwPatterns;
-    // std::vector<Rule> toParse = rule.patterns;
-    // std::cout << "=======================" << std::endl;
-
-    // while (toParse.size())
-    // {
-    //     Rule thisRule = toParse.back();
-    //     std::cout << qUtf8Printable(thisRule.match) << std::endl;
-    //     if (thisRule.match != QString{}) {
-    //         kwPatterns.push_back(thisRule.match);
-    //     }
-
-    //     toParse.pop_back();
-
-    //     if (thisRule.patterns.size()) {
-    //         for (auto & pattern : thisRule.patterns) {
-    //             toParse.push_back(pattern);
-    //         }
-    //     }
-    // }
-
-    //  = {
-    //     QStringLiteral("\\bdef\\b"),
-    //     QStringLiteral("\\breturn\\b"),
-    //     QStringLiteral("\\bif\\b"),
-    //     QStringLiteral("\\belif\\b"),
-    //     QStringLiteral("\\belse\\b"),
-    //     QStringLiteral("\\bint\\b"),
-    //     QStringLiteral("\\bstr\\b"),
-    //     QStringLiteral("\\blist\\b"),
-    // };
     keywordFormat.setForeground(Qt::darkMagenta);
     multiLineFormat.setForeground(Qt::green);
-
-    // for (auto & pattern : kwPatterns) {
-    //     highlightRule.pattern = QRegularExpression(pattern);
-    //     highlightRule.format = keywordFormat;
-    //     highlightingRules.append(highlightRule);
-    // }
-
-
-    // commentStartExpression = QRegularExpression(QStringLiteral("/\\*"));
-    // commentEndExpression = QRegularExpression(QStringLiteral("\\*/"));
-
-    // multiLineCommentFormat.setForeground(Qt::red);
-
-
-
-    // std::cout << "name: " << qUtf8Printable(rule.name) << std::endl;
-    // std::cout << "match: " << qUtf8Printable(rule.match) << std::endl;
-    // std::cout << "begin: " << qUtf8Printable(rule.begin) << std::endl;
-    // std::cout << "end: " << qUtf8Printable(rule.end) << std::endl;
-    // std::cout << "while: " << qUtf8Printable(rule.while_) << std::endl;
-    // std::cout << "include: " << qUtf8Printable(rule.include) << std::endl;
-
-    // for (auto & pattern : rule.patterns) {
-    //     std::cout << "    pattern name: " << qUtf8Printable(pattern.name) << std::endl;
-    //     std::cout << "    name: " << qUtf8Printable(pattern.name) << std::endl;
-    //     std::cout << "    match: " << qUtf8Printable(pattern.match) << std::endl;
-    //     std::cout << "    begin: " << qUtf8Printable(pattern.begin) << std::endl;
-    //     std::cout << "    end: " << qUtf8Printable(pattern.end) << std::endl;
-    //     std::cout << "    while: " << qUtf8Printable(pattern.while_) << std::endl;
-    //     std::cout << "    include: " << qUtf8Printable(pattern.include) << std::endl;
-    //     for (auto & capture : pattern.captures) {
-    //         std::cout << "        cap name: " << qUtf8Printable(capture.name) << std::endl;
-    //     }
-    // }
-
-    // std::cout << std::endl << "--------------------------------------" << std::endl;
 }
