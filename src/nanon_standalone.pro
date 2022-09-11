@@ -1,4 +1,4 @@
-include(qtconfig_maya)
+include(qtconfig_standalone)
 
 QT += widgets gui
 
@@ -6,10 +6,9 @@ TARGET = nanon
 
 HEADERS += \
     $$PWD/nanon.hpp \
-    $$PWD/nanon_maya.hpp \
     $$PWD/io/nanon_textmate.hpp
 
 SOURCES += \
     $$PWD/nanon.cpp \
-    $$PWD/nanon_maya.cpp \
+    $$PWD/nanon_standalone.cpp \
     $$PWD/io/nanon_textmate.cpp

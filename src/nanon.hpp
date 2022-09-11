@@ -56,12 +56,18 @@ private:
 };
 
 
+struct Scope {
+    QString name;
+    int startIndex;
+    int endIndex;
+};
+
 class ScopeBlockData : public QTextBlockUserData
 {
     // Q_OBJECT
 
 public:
-    QVector<QString> scopes;
+    QVector<Scope> scopes;
 };
 
 

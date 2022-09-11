@@ -6,6 +6,7 @@
 #include <string>
 
 #include <QtCore/QRegularExpressionMatchIterator>
+#include <QtWidgets/QMenu>
 #include <QtWidgets/QStatusBar>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QSplitter>
@@ -16,7 +17,7 @@
 
 NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
 {
-    this->setStyleSheet("background-color:black");
+    this->setStyleSheet("background-color:black; color:Gainsboro");
     lineNumberArea = new LineNumberArea(this);
 
     connect(this, &NanonEditor::blockCountChanged, this, &NanonEditor::updateLineNumberAreaWidth);
@@ -60,18 +61,30 @@ void NanonEditor::resizeEvent(QResizeEvent *e)
 void NanonEditor::keyPressEvent(QKeyEvent *e)
 {
     if (e->key() == 83 && e->modifiers() == (Qt::KeyboardModifier::AltModifier | Qt::KeyboardModifier::ShiftModifier)) {
-        std::cout << "alt+shift+s pressed!" << std::endl;
-        QTextBlock currentBlock = textCursor().block();
+        QTextCursor cursor = textCursor();
+        QTextBlock currentBlock = cursor.block();
         if (!currentBlock.isValid())
             return;
+
+        int cursorPosition = cursor.positionInBlock();
 
         QTextBlockUserData *userData = currentBlock.userData();
         ScopeBlockData *scopeData = dynamic_cast<ScopeBlockData*> (userData);
         if (scopeData!=NULL) {
-            std::cout << "User data:" << std::endl;
+            const QPoint cursorCoordinates = cursorRect().bottomRight();
+            QMenu menu("Scopes", this);
+            bool hasScope = false;
             for (auto & scope : scopeData->scopes) {
-                std::cout << qUtf8Printable(scope) << std::endl;
+                if (scope.startIndex <= cursorPosition && (cursorPosition <= scope.endIndex || scope.endIndex == -1)) {
+                    menu.addAction(scope.name);
+                    hasScope = true;
+                    // std::cout << qUtf8Printable(scope.name) << " " << std::to_string(scope.startIndex) << " " << std::to_string(scope.endIndex) << std::endl;
+                }
             }
+            if (!hasScope) {
+                menu.addAction("Not in a scope");
+            }
+            menu.exec(mapToGlobal(cursorCoordinates));
         }
     } else {
         QPlainTextEdit::keyPressEvent(e);
@@ -312,60 +325,82 @@ void Highlighter::highlightBlock(const QString &text)
         }
     }
 
-    ScopeBlockData *scopeData = previousBlockUserData();
-    QVector<QString> scopes;
-    if (scopeData != NULL) {
-        scopes = scopeData->scopes;
+    ScopeBlockData *prevScopeData = previousBlockUserData();
+
+    QVector<Scope> existingScopes;
+    if (prevScopeData != NULL) {
+        for (Scope prevScope : prevScopeData->scopes) {
+            if (prevScope.endIndex == -1) {
+                // Scope did not end.
+                existingScopes.push_back(prevScope);
+            }
+        }
     }
 
-    ScopeBlockData *nextScopeData = new ScopeBlockData;
-    for (QString str : scopes) {
-        nextScopeData->scopes.push_back(str);
-    }
-
+    ScopeBlockData *scopeData = new ScopeBlockData;
+    // for (Scope existingScope : existingScopes) {
+    //     scopeData->scopes.push_back(existingScope);
+    // }
     // Try to match non existing scopes.
     for (Rule & pattern : rule.patterns) {
         if (pattern.begin != QRegularExpression{} && pattern.end != QRegularExpression{} && pattern.name != QString{}) {
             int startIndex = 0;
 
-            if (scopes.contains(pattern.name)) {  // We are already in scope.
-                QRegularExpressionMatch match = pattern.end.match(text, startIndex);
-                int endIndex = match.capturedStart();
-                if (endIndex > -1) {
-                    // End of capture found, remove from next scopes.
-                    setFormat(startIndex, endIndex + 1, multiLineFormat);
+            for (Scope scope : existingScopes) {
+                if (scope.name == pattern.name) {
+                    // We are already in scope.
+                    QRegularExpressionMatch match = pattern.end.match(text, startIndex);
+                    int endIndex = match.capturedStart();
+                    if (endIndex > -1) {
+                        // End of capture found, remove from next scopes.
+                        setFormat(startIndex, endIndex + 1, multiLineFormat);
 
-                    startIndex = endIndex + 1;
 
-                    // if scopes.contains()
-                    nextScopeData->scopes.removeAt(scopes.indexOf(pattern.name));
-                } else {
-                    // Not found, set whole line.
-                    setFormat(startIndex, text.length(), multiLineFormat);
-                    startIndex = text.length();
+                        // int scopeIndex;
+                        // for (int i = 0; i < scopeData->scopes.size(); ++i) {
+                        //     if (scopeData->scopes[i].name == pattern.name) {
+                        //         scopeIndex = i;
+                        //         break;
+                        //     }
+                        // }
+                        // scopeData->scopes.removeAt(scopeIndex);
+                        Scope newScope = {pattern.name, -1, endIndex};
+                        scopeData->scopes.push_back(newScope);
+
+                        startIndex = endIndex + 1; // hMM todo? what are we doing here.
+                    } else {
+                        // Not found, set whole line.
+                        setFormat(startIndex, text.length(), multiLineFormat);
+                        startIndex = text.length();
+
+                        // Add scope to scope data.
+                        Scope newScope = {pattern.name, -1, -1};
+                        scopeData->scopes.push_back(newScope);
+                    }
+                    break;
                 }
             }
 
             startIndex = text.indexOf(pattern.begin, startIndex);
             while (startIndex >= 0) {
-                // printf("start index %d\n", startIndex);
                 QRegularExpressionMatch match = pattern.end.match(text, startIndex + 1);
                 int endIndex = match.capturedStart();
-                // printf("end index %d\n", endIndex);
                 int capturedLength = 0;
                 if (endIndex == -1) {  // End is not in this block, add to scopes for next block.
                     capturedLength = text.length() - startIndex;
-                    nextScopeData->scopes.push_back(pattern.name);
+
                 } else {  // End of capture found, remove from scopes.
                     capturedLength = endIndex - startIndex + match.capturedLength();
                 }
+                Scope newScope = {pattern.name, startIndex, endIndex};
+                scopeData->scopes.push_back(newScope);
+
                 setFormat(startIndex, capturedLength, multiLineFormat);
                 startIndex = text.indexOf(pattern.begin, startIndex + capturedLength);
             }
         }
     }
-
-    setCurrentBlockUserData(nextScopeData);
+    setCurrentBlockUserData(scopeData);
 }
 
 
@@ -445,7 +480,6 @@ Highlighter::Rule Highlighter::makeRule(QMap<QString, QVariant> map, int &blockS
 void Highlighter::setSyntaxFromFile(QString fileName)
 {
     TextMateParseError err;
-    std::cout << std::endl << "=== start ===" << std::endl;
 
     TextMateParser tmParser = TextMateParser();
     QVariant tmData = tmParser.parse(fileName, err);
@@ -460,5 +494,6 @@ void Highlighter::setSyntaxFromFile(QString fileName)
     rule = this->makeRule(map, startId);
 
     keywordFormat.setForeground(Qt::darkMagenta);
-    multiLineFormat.setForeground(Qt::green);
+    // multiLineFormat.setForeground(Qt::green);
+    multiLineFormat.setForeground(QColor(191, 255, 0, 255));
 }

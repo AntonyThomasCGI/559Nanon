@@ -1,0 +1,16 @@
+TEMPLATE = app
+
+
+CONFIG += qt warn_on release console c++17
+
+win32 {
+    LIBS += "-lshell32"
+}
+
+DEFINES		+= NDEBUG _WINDOWS
+INCLUDEPATH	+= .
+QMAKE_LFLAGS	= /SUBSYSTEM:WINDOWS
+_CFLAGS		= /FD /GS
+QMAKE_CFLAGS	+= $${_CFLAGS}
+QMAKE_CXXFLAGS	+= $${_CFLAGS}
+DESTDIR     = bin
