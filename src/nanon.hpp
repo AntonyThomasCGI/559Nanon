@@ -97,10 +97,10 @@ private:
         QRegularExpression while_;
         QString include;
         QString contentName;
-        std::vector<Rule> captures;  // TODO add tuple? index of captures.
-        std::vector<Rule> beginCaptures;
-        std::vector<Rule> endCaptures;
-        std::vector<Rule> whileCaptures;
+        QMap<int, Rule> captures;
+        QMap<int, Rule> beginCaptures;
+        QMap<int, Rule> endCaptures;
+        QMap<int, Rule> whileCaptures;
         std::vector<Rule> patterns;
     };
 

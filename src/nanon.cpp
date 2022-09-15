@@ -125,7 +125,6 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
 {
     QPainter painter(lineNumberArea);
     QColor rectColor = QColor(Qt::black);
-    // QColor rectColor = this->palette().color(QPalette::Window);
     painter.fillRect(event->rect(), rectColor);
 
     QTextBlock block = firstVisibleBlock();
@@ -152,9 +151,6 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
             QPoint upperRightPnt(width + width, yValue - 2);
             painter.drawLine(upperLeftPnt, upperRightPnt);
 
-            // QTextOption textOption = QTextOption(Qt::Alignment::)
-            // painter.save();
-
             if ((blockNumber + 1) % 10 == 0 || blockNumber == 0) {
                 painter.setPen(QColor(191, 255, 0, 255));
                 QString number = QString::number(blockNumber + 1);
@@ -174,7 +170,6 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
                                 Qt::AlignCenter, number);
                 painter.resetTransform();
             };
-            // painter.restore();
         }
 
         block = block.next();
@@ -193,26 +188,16 @@ NanonWindow::NanonWindow(QWidget* parent)
 
     QSplitter *splitter = new QSplitter(Qt::Vertical);
 
-    // QVBoxLayout *layout = new QVBoxLayout;
-    // layout->setSpacing(0);
-
     outputWindow = new QPlainTextEdit;
     outputWindow->setReadOnly(true);
     outputWindow->setWordWrapMode(QTextOption::NoWrap);
     setMonospaced(outputWindow);
     outputWindow->setStyleSheet("background-color:black;");
-    // QTextDocument *doc = outputWindow->document();
-    // QFont font("monospaced");
-    // font.setStyleHint(QFont::Monospace);
-    // doc->setDefaultFont(font);
 
     editor = new NanonEditor;
     editor->setWordWrapMode(QTextOption::NoWrap);
     setMonospaced(editor);
-    // QTextDocument *editorDoc = editor->document();
-    // QFont editorFont("monospaced");
-    // editorFont.setStyleHint(QFont::Monospace);
-    // editorDoc->setDefaultFont(editorFont);
+
     highlighter = new Highlighter(editor->document());
 
     splitter->addWidget(outputWindow);
@@ -223,7 +208,10 @@ NanonWindow::NanonWindow(QWidget* parent)
 
     createStatusBar();
 
-    QString tempText = R""""(def hi():
+    QString tempText = R""""(
+import hi
+
+def hi():
 	pass
 
 print('hi')
@@ -246,7 +234,6 @@ more' done
 
 async def my_func():
 	pass
-
 
 
 
@@ -315,12 +302,38 @@ ScopeBlockData* Highlighter::previousBlockUserData() const
 
 void Highlighter::highlightBlock(const QString &text)
 {
+    ScopeBlockData *scopeData = new ScopeBlockData;
+
     for (Rule & pattern : rule.patterns) {
         if (pattern.match != QRegularExpression{}) {
             QRegularExpressionMatchIterator matchIterator = pattern.match.globalMatch(text);
+
             while (matchIterator.hasNext()) {
                 QRegularExpressionMatch match = matchIterator.next();
                 setFormat(match.capturedStart(), match.capturedLength(), keywordFormat);
+
+                if (!pattern.captures.isEmpty()) {
+                    // Try to match captures.
+                    // TODO: This is hardcoded to expect name as the only thing in Rule.
+                    QMapIterator<int, Rule> it(pattern.captures);
+                    while (it.hasNext()) {
+                        it.next();
+                        int key = it.key();
+                        Rule value = it.value();
+                        std::cout << qUtf8Printable(value.name) << std::endl;
+
+                        QString capGroup = match.captured(key);
+                        if (capGroup.isNull())
+                            continue;
+
+                        int start = text.indexOf(capGroup);
+                        Scope thisScope = {value.name, start, start + capGroup.length()};
+                        scopeData->scopes.push_back(thisScope);
+                    }
+                } else {
+                    Scope thisScope = {pattern.name, match.capturedStart(), match.capturedEnd()};
+                    scopeData->scopes.push_back(thisScope);
+                }
             }
         }
     }
@@ -337,11 +350,6 @@ void Highlighter::highlightBlock(const QString &text)
         }
     }
 
-    ScopeBlockData *scopeData = new ScopeBlockData;
-    // for (Scope existingScope : existingScopes) {
-    //     scopeData->scopes.push_back(existingScope);
-    // }
-    // Try to match non existing scopes.
     for (Rule & pattern : rule.patterns) {
         if (pattern.begin != QRegularExpression{} && pattern.end != QRegularExpression{} && pattern.name != QString{}) {
             int startIndex = 0;
@@ -355,19 +363,11 @@ void Highlighter::highlightBlock(const QString &text)
                         // End of capture found, remove from next scopes.
                         setFormat(startIndex, endIndex + 1, multiLineFormat);
 
-
-                        // int scopeIndex;
-                        // for (int i = 0; i < scopeData->scopes.size(); ++i) {
-                        //     if (scopeData->scopes[i].name == pattern.name) {
-                        //         scopeIndex = i;
-                        //         break;
-                        //     }
-                        // }
-                        // scopeData->scopes.removeAt(scopeIndex);
+                        // Add the new scope.
                         Scope newScope = {pattern.name, -1, endIndex};
                         scopeData->scopes.push_back(newScope);
 
-                        startIndex = endIndex + 1; // hMM todo? what are we doing here.
+                        startIndex = endIndex + 1; // Don't match the same symbol.
                     } else {
                         // Not found, set whole line.
                         setFormat(startIndex, text.length(), multiLineFormat);
@@ -439,7 +439,7 @@ Highlighter::Rule Highlighter::makeRule(QMap<QString, QVariant> map, int &blockS
         while (it.hasNext()) {
             it.next();
             QMap<QString, QVariant> m = it.value().toMap();
-            rule.captures.push_back(makeRule(m, blockStateID));
+            rule.captures.insert(it.key().toInt(), makeRule(m, blockStateID));
         }
     }
 
@@ -449,7 +449,7 @@ Highlighter::Rule Highlighter::makeRule(QMap<QString, QVariant> map, int &blockS
         while (it.hasNext()) {
             it.next();
             QMap<QString, QVariant> m = it.value().toMap();
-            rule.beginCaptures.push_back(makeRule(m, blockStateID));
+            rule.beginCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
         }
     }
 
@@ -459,7 +459,7 @@ Highlighter::Rule Highlighter::makeRule(QMap<QString, QVariant> map, int &blockS
         while (it.hasNext()) {
             it.next();
             QMap<QString, QVariant> m = it.value().toMap();
-            rule.endCaptures.push_back(makeRule(m, blockStateID));
+            rule.endCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
         }
     }
 
@@ -469,7 +469,7 @@ Highlighter::Rule Highlighter::makeRule(QMap<QString, QVariant> map, int &blockS
         while (it.hasNext()) {
             it.next();
             QMap<QString, QVariant> m = it.value().toMap();
-            rule.whileCaptures.push_back(makeRule(m, blockStateID));
+            rule.whileCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
         }
     }
 
