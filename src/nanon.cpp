@@ -74,9 +74,9 @@ void NanonEditor::keyPressEvent(QKeyEvent *e)
             const QPoint cursorCoordinates = cursorRect().bottomRight();
             QMenu menu("Scopes", this);
             bool hasScope = false;
-            for (auto & scope : scopeData->scopes) {
-                if (scope.startIndex <= cursorPosition && (cursorPosition <= scope.endIndex || scope.endIndex == -1)) {
-                    menu.addAction(scope.name);
+            for (auto & region : scopeData->regions) {
+                if (region.start <= cursorPosition && (cursorPosition <= region.end || region.end == -1)) {
+                    menu.addAction(region.scope);
                     hasScope = true;
                     // std::cout << qUtf8Printable(scope.name) << " " << std::to_string(scope.startIndex) << " " << std::to_string(scope.endIndex) << std::endl;
                 }
@@ -151,7 +151,7 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
             QPoint upperRightPnt(width + width, yValue - 2);
             painter.drawLine(upperLeftPnt, upperRightPnt);
 
-            if ((blockNumber + 1) % 10 == 0 || blockNumber == 0) {
+            if ((blockNumber + 1) % 10 == 0) {
                 painter.setPen(QColor(191, 255, 0, 255));
                 QString number = QString::number(blockNumber + 1);
                 for (int i = number.length() - 3; i > 0; i = i - 3)
@@ -178,7 +178,6 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
         ++blockNumber;
     }
 }
-
 
 
 
@@ -302,179 +301,200 @@ ScopeBlockData* Highlighter::previousBlockUserData() const
 
 void Highlighter::highlightBlock(const QString &text)
 {
-    ScopeBlockData *scopeData = new ScopeBlockData;
+    ScopeBlockData * scopeData = new ScopeBlockData;
 
-    for (Rule & pattern : rule.patterns) {
-        if (pattern.match != QRegularExpression{}) {
-            QRegularExpressionMatchIterator matchIterator = pattern.match.globalMatch(text);
-
-            while (matchIterator.hasNext()) {
-                QRegularExpressionMatch match = matchIterator.next();
-                setFormat(match.capturedStart(), match.capturedLength(), keywordFormat);
-
-                if (!pattern.captures.isEmpty()) {
-                    // Try to match captures.
-                    // TODO: This is hardcoded to expect name as the only thing in Rule.
-                    QMapIterator<int, Rule> it(pattern.captures);
-                    while (it.hasNext()) {
-                        it.next();
-                        int key = it.key();
-                        Rule value = it.value();
-                        std::cout << qUtf8Printable(value.name) << std::endl;
-
-                        QString capGroup = match.captured(key);
-                        if (capGroup.isNull())
-                            continue;
-
-                        int start = text.indexOf(capGroup);
-                        Scope thisScope = {value.name, start, start + capGroup.length()};
-                        scopeData->scopes.push_back(thisScope);
-                    }
-                } else {
-                    Scope thisScope = {pattern.name, match.capturedStart(), match.capturedEnd()};
-                    scopeData->scopes.push_back(thisScope);
-                }
+    for (std::unique_ptr<Rule> &rule : grammar->rules) {
+        auto[state, regions] = rule->search(text);
+        // Regions regions = rule->search(text);
+        for (Region &region : regions) {
+            // TODO move out of loop. highly unoptimized here.
+            if (formats.contains(region.scope)) {
+                // Set highlighting.
+                setFormat(region.start, region.end - region.start, formats.value(region.scope));
             }
-        }
-    }
-
-    ScopeBlockData *prevScopeData = previousBlockUserData();
-
-    QVector<Scope> existingScopes;
-    if (prevScopeData != NULL) {
-        for (Scope prevScope : prevScopeData->scopes) {
-            if (prevScope.endIndex == -1) {
-                // Scope did not end.
-                existingScopes.push_back(prevScope);
-            }
-        }
-    }
-
-    for (Rule & pattern : rule.patterns) {
-        if (pattern.begin != QRegularExpression{} && pattern.end != QRegularExpression{} && pattern.name != QString{}) {
-            int startIndex = 0;
-
-            for (Scope scope : existingScopes) {
-                if (scope.name == pattern.name) {
-                    // We are already in scope.
-                    QRegularExpressionMatch match = pattern.end.match(text, startIndex);
-                    int endIndex = match.capturedStart();
-                    if (endIndex > -1) {
-                        // End of capture found, remove from next scopes.
-                        setFormat(startIndex, endIndex + 1, multiLineFormat);
-
-                        // Add the new scope.
-                        Scope newScope = {pattern.name, -1, endIndex};
-                        scopeData->scopes.push_back(newScope);
-
-                        startIndex = endIndex + 1; // Don't match the same symbol.
-                    } else {
-                        // Not found, set whole line.
-                        setFormat(startIndex, text.length(), multiLineFormat);
-                        startIndex = text.length();
-
-                        // Add scope to scope data.
-                        Scope newScope = {pattern.name, -1, -1};
-                        scopeData->scopes.push_back(newScope);
-                    }
-                    break;
-                }
-            }
-
-            startIndex = text.indexOf(pattern.begin, startIndex);
-            while (startIndex >= 0) {
-                QRegularExpressionMatch match = pattern.end.match(text, startIndex + 1);
-                int endIndex = match.capturedStart();
-                int capturedLength = 0;
-                if (endIndex == -1) {  // End is not in this block, add to scopes for next block.
-                    capturedLength = text.length() - startIndex;
-
-                } else {  // End of capture found, remove from scopes.
-                    capturedLength = endIndex - startIndex + match.capturedLength();
-                }
-                Scope newScope = {pattern.name, startIndex, endIndex};
-                scopeData->scopes.push_back(newScope);
-
-                setFormat(startIndex, capturedLength, multiLineFormat);
-                startIndex = text.indexOf(pattern.begin, startIndex + capturedLength);
-            }
+            // Add to user data.
+            scopeData->regions.push_back(region);
         }
     }
     setCurrentBlockUserData(scopeData);
 }
 
 
-Highlighter::Rule Highlighter::makeRule(QMap<QString, QVariant> map, int &blockStateID)
-{
-    Rule rule = Rule();
+// void Highlighter::highlightBlock(const QString &text)
+// {
+//     ScopeBlockData *scopeData = new ScopeBlockData;
 
-    rule.scopeID = blockStateID;
-    blockStateID++;
-    if (map.contains("name"))
-        rule.name = map.value("name").toString();
-    if (map.contains("match"))
-        rule.match = QRegularExpression(map.value("match").toString());
-    if (map.contains("begin"))
-        rule.begin = QRegularExpression(map.value("begin").toString());
-    if (map.contains("end"))
-        rule.end = QRegularExpression(map.value("end").toString());
-    if (map.contains("while"))
-        rule.while_ = QRegularExpression(map.value("while").toString());
-    if (map.contains("include"))
-        rule.include = map.value("include").toString();
-    if (map.contains("contentName"))
-        rule.contentName = map.value("contentName").toString();
+//     for (Rule & pattern : rule.patterns) {
+//         if (pattern.match != QRegularExpression{}) {
+//             QRegularExpressionMatchIterator matchIterator = pattern.match.globalMatch(text);
 
-    if (map.contains("patterns")) {
-        QList<QVariant> allPatterns = map.value("patterns").toList();
-        for (int i = 0; i < allPatterns.size(); ++i) {
-            QMap<QString, QVariant> patternMap = allPatterns.at(i).toMap();
-            rule.patterns.push_back(makeRule(patternMap, blockStateID));
-        }
-    }
+//             while (matchIterator.hasNext()) {
+//                 QRegularExpressionMatch match = matchIterator.next();
+//                 setFormat(match.capturedStart(), match.capturedLength(), keywordFormat);
 
-    if (map.contains("captures")) {
-        QMap<QString, QVariant> capturesMap = map.value("captures").toMap();
-        QMapIterator<QString, QVariant> it(capturesMap);
-        while (it.hasNext()) {
-            it.next();
-            QMap<QString, QVariant> m = it.value().toMap();
-            rule.captures.insert(it.key().toInt(), makeRule(m, blockStateID));
-        }
-    }
+//                 if (!pattern.captures.isEmpty()) {
+//                     // Try to match captures groups.
+//                     QMapIterator<int, Rule> it(pattern.captures);
+//                     while (it.hasNext()) {
+//                         it.next();
+//                         int matchN = it.key();
+//                         Rule captureRule = it.value();
+//                         if (!captureRule.name.isEmpty()) {
+//                             QString capGroup = match.captured(matchN);
+//                             if (capGroup.isNull())
+//                                 continue;
 
-    if (map.contains("beginCaptures")) {
-        QMap<QString, QVariant> beginCapturesMap = map.value("beginCaptures").toMap();
-        QMapIterator<QString, QVariant> it(beginCapturesMap);
-        while (it.hasNext()) {
-            it.next();
-            QMap<QString, QVariant> m = it.value().toMap();
-            rule.beginCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
-        }
-    }
+//                             int start = text.indexOf(capGroup);
+//                             Scope thisScope = {captureRule.name, start, start + capGroup.length()};
+//                             scopeData->scopes.push_back(thisScope);
+//                         }
+//                         // TODO: Possibly need to handle case where capture group provides more than name.
+//                     }
+//                 } else {
+//                     Scope thisScope = {pattern.name, match.capturedStart(), match.capturedEnd()};
+//                     scopeData->scopes.push_back(thisScope);
+//                 }
+//             }
+//         }
+//     }
 
-    if (map.contains("endCaptures")) {
-        QMap<QString, QVariant> endCapturesMap = map.value("endCaptures").toMap();
-        QMapIterator<QString, QVariant> it(endCapturesMap);
-        while (it.hasNext()) {
-            it.next();
-            QMap<QString, QVariant> m = it.value().toMap();
-            rule.endCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
-        }
-    }
+//     ScopeBlockData *prevScopeData = previousBlockUserData();
 
-    if (map.contains("whileCaptures")) {
-        QMap<QString, QVariant> whileCapturesMap = map.value("whileCaptures").toMap();
-        QMapIterator<QString, QVariant> it(whileCapturesMap);
-        while (it.hasNext()) {
-            it.next();
-            QMap<QString, QVariant> m = it.value().toMap();
-            rule.whileCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
-        }
-    }
+//     QVector<Scope> existingScopes;
+//     if (prevScopeData != NULL) {
+//         for (Scope prevScope : prevScopeData->scopes) {
+//             if (prevScope.endIndex == -1) {
+//                 // Scope did not end.
+//                 existingScopes.push_back(prevScope);
+//             }
+//         }
+//     }
 
-    return rule;
-}
+//     for (Rule & pattern : rule.patterns) {
+//         if (pattern.begin != QRegularExpression{} && pattern.end != QRegularExpression{} && pattern.name != QString{}) {
+//             int startIndex = 0;
+
+//             for (Scope scope : existingScopes) {
+//                 if (scope.name == pattern.name) {
+//                     // We are already in scope.
+//                     QRegularExpressionMatch match = pattern.end.match(text, startIndex);
+//                     int endIndex = match.capturedStart();
+//                     if (endIndex > -1) {
+//                         // End of capture found, remove from next scopes.
+//                         setFormat(startIndex, endIndex + 1, multiLineFormat);
+
+//                         // Add the new scope.
+//                         Scope newScope = {pattern.name, -1, endIndex};
+//                         scopeData->scopes.push_back(newScope);
+
+//                         startIndex = endIndex + 1; // Don't match the same symbol.
+//                     } else {
+//                         // Not found, set whole line.
+//                         setFormat(startIndex, text.length(), multiLineFormat);
+//                         startIndex = text.length();
+
+//                         // Add scope to scope data.
+//                         Scope newScope = {pattern.name, -1, -1};
+//                         scopeData->scopes.push_back(newScope);
+//                     }
+//                     break;
+//                 }
+//             }
+
+//             startIndex = text.indexOf(pattern.begin, startIndex);
+//             while (startIndex >= 0) {
+//                 QRegularExpressionMatch match = pattern.end.match(text, startIndex + 1);
+//                 int endIndex = match.capturedStart();
+//                 int capturedLength = 0;
+//                 if (endIndex == -1) {  // End is not in this block, add to scopes for next block.
+//                     capturedLength = text.length() - startIndex;
+
+//                 } else {  // End of capture found, remove from scopes.
+//                     capturedLength = endIndex - startIndex + match.capturedLength();
+//                 }
+//                 Scope newScope = {pattern.name, startIndex, endIndex};
+//                 scopeData->scopes.push_back(newScope);
+
+//                 setFormat(startIndex, capturedLength, multiLineFormat);
+//                 startIndex = text.indexOf(pattern.begin, startIndex + capturedLength);
+//             }
+//         }
+//     }
+//     setCurrentBlockUserData(scopeData);
+// }
+
+
+// Highlighter::Rule Highlighter::makeRule(QMap<QString, QVariant> map, int &blockStateID)
+// {
+//     Rule rule = Rule();
+
+//     rule.scopeID = blockStateID;
+//     blockStateID++;
+//     if (map.contains("name"))
+//         rule.name = map.value("name").toString();
+//     if (map.contains("match"))
+//         rule.match = QRegularExpression(map.value("match").toString());
+//     if (map.contains("begin"))
+//         rule.begin = QRegularExpression(map.value("begin").toString());
+//     if (map.contains("end"))
+//         rule.end = QRegularExpression(map.value("end").toString());
+//     if (map.contains("while"))
+//         rule.while_ = QRegularExpression(map.value("while").toString());
+//     if (map.contains("include"))
+//         rule.include = map.value("include").toString();
+//     if (map.contains("contentName"))
+//         rule.contentName = map.value("contentName").toString();
+
+//     if (map.contains("patterns")) {
+//         QList<QVariant> allPatterns = map.value("patterns").toList();
+//         for (int i = 0; i < allPatterns.size(); ++i) {
+//             QMap<QString, QVariant> patternMap = allPatterns.at(i).toMap();
+//             rule.patterns.push_back(makeRule(patternMap, blockStateID));
+//         }
+//     }
+
+//     if (map.contains("captures")) {
+//         QMap<QString, QVariant> capturesMap = map.value("captures").toMap();
+//         QMapIterator<QString, QVariant> it(capturesMap);
+//         while (it.hasNext()) {
+//             it.next();
+//             QMap<QString, QVariant> m = it.value().toMap();
+//             rule.captures.insert(it.key().toInt(), makeRule(m, blockStateID));
+//         }
+//     }
+
+//     if (map.contains("beginCaptures")) {
+//         QMap<QString, QVariant> beginCapturesMap = map.value("beginCaptures").toMap();
+//         QMapIterator<QString, QVariant> it(beginCapturesMap);
+//         while (it.hasNext()) {
+//             it.next();
+//             QMap<QString, QVariant> m = it.value().toMap();
+//             rule.beginCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
+//         }
+//     }
+
+//     if (map.contains("endCaptures")) {
+//         QMap<QString, QVariant> endCapturesMap = map.value("endCaptures").toMap();
+//         QMapIterator<QString, QVariant> it(endCapturesMap);
+//         while (it.hasNext()) {
+//             it.next();
+//             QMap<QString, QVariant> m = it.value().toMap();
+//             rule.endCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
+//         }
+//     }
+
+//     if (map.contains("whileCaptures")) {
+//         QMap<QString, QVariant> whileCapturesMap = map.value("whileCaptures").toMap();
+//         QMapIterator<QString, QVariant> it(whileCapturesMap);
+//         while (it.hasNext()) {
+//             it.next();
+//             QMap<QString, QVariant> m = it.value().toMap();
+//             rule.whileCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
+//         }
+//     }
+
+//     return rule;
+// }
 
 
 void Highlighter::setSyntaxFromFile(QString fileName)
@@ -490,10 +510,23 @@ void Highlighter::setSyntaxFromFile(QString fileName)
 
     QMap<QString, QVariant> map = tmData.toMap();
 
-    int startId = 0;
-    rule = this->makeRule(map, startId);
+    // int startId = 0;
+    // rule = this->makeRule(map, startId);
+
+    grammar = new Grammar("my scope", map);
+
+    QTextCharFormat keywordFormat;
+    QTextCharFormat multiLineFormat;
 
     keywordFormat.setForeground(Qt::darkMagenta);
-    // multiLineFormat.setForeground(Qt::green);
     multiLineFormat.setForeground(QColor(191, 255, 0, 255));
+
+    // super hardcoded atm lol.
+    // this will eventually read from a json file.
+    formats["string.quoted.double"] = multiLineFormat;
+    formats["string.quoted.single"] = multiLineFormat;
+    formats["test.import.keyword"] = keywordFormat;
+    formats["comment.line.number-sign"] = keywordFormat;
+    formats["storage.modifier.async.python"] = keywordFormat;
+    formats["storage.type.function.python"] = keywordFormat;
 }

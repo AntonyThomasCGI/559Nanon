@@ -1,6 +1,7 @@
 #pragma once
 
 #include "io/nanon_textmate.hpp"
+#include "textmate/nanon_rule.hpp"
 
 #include <QtCore/QRegularExpression>
 #include <QtCore/QPointer>
@@ -56,18 +57,12 @@ private:
 };
 
 
-struct Scope {
-    QString name;
-    int startIndex;
-    int endIndex;
-};
-
 class ScopeBlockData : public QTextBlockUserData
 {
     // Q_OBJECT
 
 public:
-    QVector<Scope> scopes;
+    QVector<Region> regions;
 };
 
 
@@ -88,21 +83,21 @@ private:
 //     //     QRegularExpression pattern;
 //     //     QTextCharFormat format;
 //     // };
-    struct Rule {
-        int scopeID;
-        QString name;
-        QRegularExpression match;
-        QRegularExpression begin;
-        QRegularExpression end;
-        QRegularExpression while_;
-        QString include;
-        QString contentName;
-        QMap<int, Rule> captures;
-        QMap<int, Rule> beginCaptures;
-        QMap<int, Rule> endCaptures;
-        QMap<int, Rule> whileCaptures;
-        std::vector<Rule> patterns;
-    };
+    // struct Rule {
+    //     int scopeID;
+    //     QString name;
+    //     QRegularExpression match;
+    //     QRegularExpression begin;
+    //     QRegularExpression end;
+    //     QRegularExpression while_;
+    //     QString include;
+    //     QString contentName;
+    //     QMap<int, Rule> captures;
+    //     QMap<int, Rule> beginCaptures;
+    //     QMap<int, Rule> endCaptures;
+    //     QMap<int, Rule> whileCaptures;
+    //     std::vector<Rule> patterns;
+    // };
 
     // QVector<QString> previousBlockScopes;
     // QVector<QString> currentBlockScopes;
@@ -110,7 +105,7 @@ private:
 //     void setDocument(QTextDocument *doc);
 
 
-    Rule makeRule(QMap<QString, QVariant> map, int &blockStateID);
+    // Rule makeRule(QMap<QString, QVariant> map, int &blockStateID);
 
 //     QTextDocument *doc;
 
@@ -121,13 +116,15 @@ private:
 //     QRegularExpression commentStartExpression;
 //     QRegularExpression commentEndExpression;
 
-    QTextCharFormat keywordFormat;
-    QTextCharFormat multiLineFormat;
+    QMap<QString, QTextCharFormat> formats;
+    // QTextCharFormat keywordFormat;
+    // QTextCharFormat multiLineFormat;
 
 //     int custumBlockState;
     ScopeBlockData* previousBlockUserData() const;
 
-    Rule rule;
+    // Rule rule;
+    Grammar *grammar;
 //     QVector<QString> scopes;
 //     // QTextCharFormat classFormat;
 //     // QTextCharFormat singleLineCommentFormat;
