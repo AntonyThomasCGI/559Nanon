@@ -13,7 +13,7 @@ const MString NanonCmd::commandName("nanon");
 
 MCallbackId outputCallbackId;
 
-//    Destroy the button window, if it still exists.
+
 void NanonCmd::cleanup()
 {
     if (!nanon.isNull()) delete nanon;
@@ -31,7 +31,7 @@ void NanonCmd::outputCallback(const MString &message, MCommandMessage::MessageTy
 
 
 
-MStatus NanonCmd::doIt(const MArgList& /* args */)
+MStatus NanonCmd::doIt(const MArgList&)
 {
     if (nanon.isNull()) {
         nanon = new NanonWindow();
@@ -67,7 +67,7 @@ MStatus initializePlugin(MObject plugin)
         return st;
     }
 
-    //    Register the command.
+    // Register the command.
     st = pluginFn.registerCommand(NanonCmd::commandName, NanonCmd::creator);
 
     if (!st) {
@@ -96,10 +96,10 @@ MStatus uninitializePlugin(MObject plugin)
         return st;
     }
 
-    //    Make sure that there is no UI left hanging around.
+    // Make sure that there is no UI left hanging around.
     NanonCmd::cleanup();
 
-    //    Deregister the command.
+    // Deregister the command.
     st = pluginFn.deregisterCommand(NanonCmd::commandName);
 
     if (!st) {
