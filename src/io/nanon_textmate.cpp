@@ -6,6 +6,7 @@
 #include <QtCore/QFile>
 #include <QtCore/QJsonParseError>
 #include <QtCore/QXmlStreamReader>
+#include <QtCore/QJsonDocument>
 
 
 TextMateParser::TextMateParser()

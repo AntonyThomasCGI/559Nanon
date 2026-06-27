@@ -13,8 +13,8 @@
 // Region represents the bounds of a successful match.
 struct Region {
     QString scope;
-    int start;
-    int end;
+    long start;
+    long end;
 };
 
 // Forward declaration.

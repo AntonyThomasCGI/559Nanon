@@ -15,6 +15,11 @@
 #include <QtCore/QTimer>
 
 
+#ifndef SYNTAX_PATH
+#define SYNTAX_PATH ""
+#endif
+
+
 NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
 {
     this->setStyleSheet("background-color:black; color:Gainsboro");
@@ -137,18 +142,21 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
 
     while (block.isValid() && top <= event->rect().bottom()) {
         if (block.isVisible() && bottom >= event->rect().top()) {
+
+            //blockBoundingRect(block).height()
+
             QColor darkPurple = QColor(48, 25, 52, 255);
             QPen drawPen(darkPurple, 2);
             int yValue = top + qRound(fontMetrics().height() / 2.0);
-            QPoint leftPnt(0, yValue);
+            QPoint leftPnt(10, yValue);
             QPoint rightPnt(qRound(lineNumberArea->width() / 1.5), yValue);
 
             painter.setPen(drawPen);
             painter.drawLine(leftPnt, rightPnt);
 
             int width = qRound(lineNumberArea->width() / 6.0);
-            QPoint upperLeftPnt(width, yValue - 2);
-            QPoint upperRightPnt(width + width, yValue - 2);
+            QPoint upperLeftPnt(width, yValue - 6);
+            QPoint upperRightPnt(width + width, yValue - 6);
             painter.drawLine(upperLeftPnt, upperRightPnt);
 
             if ((blockNumber + 1) % 10 == 0) {
@@ -207,6 +215,8 @@ NanonWindow::NanonWindow(QWidget* parent)
 
     createStatusBar();
 
+    std::cout << "here " << std::endl;
+
     QString tempText = R""""(
 import hi
 
@@ -239,7 +249,10 @@ async def my_func():
 
 
 )"""";
-    editor->setPlainText(tempText);
+    std::cout << "Setting editor text" << std::endl;    
+    //editor->setPlainText(tempText);
+
+    std::cout << 'done' << std::endl;
 }
 
 NanonWindow::~NanonWindow()
@@ -280,7 +293,8 @@ Highlighter::Highlighter(QTextDocument *parent)
 {
     // QString file = "C:\\dev\\559Nanon\\pip-requirements.tmLanguage.json";
     // QString file = "C:\\dev\\559Nanon\\Python.tmLanguage";
-    QString file = "C:\\dev\\559Nanon\\test.tmLanguage.json";
+    QString syntaxPath = SYNTAX_PATH;
+    QString file = syntaxPath + "Test.tmLanguage.json";
 
     this->setSyntaxFromFile(file);
 }
@@ -525,8 +539,11 @@ void Highlighter::setSyntaxFromFile(QString fileName)
     // this will eventually read from a json file.
     formats["string.quoted.double"] = multiLineFormat;
     formats["string.quoted.single"] = multiLineFormat;
+    formats["string.quoted.double.example"] = multiLineFormat;
+    formats["string.quoted.single.example"] = multiLineFormat;
     formats["test.import.keyword"] = keywordFormat;
     formats["comment.line.number-sign"] = keywordFormat;
     formats["storage.modifier.async.python"] = keywordFormat;
     formats["storage.type.function.python"] = keywordFormat;
+    formats["keyword.control.todo.example"] = keywordFormat;
 }
