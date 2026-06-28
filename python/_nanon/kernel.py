@@ -1,20 +1,115 @@
-
+import ast
+import code
 import contextlib
+import functools
 import json
 import os
 import socket
 import struct
+import sys
 import traceback
-from io import StringIO
 
 
 _SOCKET_PATH = "/tmp/nanon.sock"
+
+_GLOBALS_DICT = {}
+
+
+class SocketWriter:
+    def __init__(self, event, send):
+        self.event = event
+        self.send = send
+
+    def write(self, text):
+        # Do not place code that logs to stdout/stderr in this function!
+        if text:
+            self.send({
+                "event": self.event,
+                "text": text,
+            })
+
+    def flush(self):
+        pass
+
+
+class ReprSocketWriter(SocketWriter):
+
+    def write(self, text):
+        if text:
+            self.send({
+                "event": self.event,
+                "text": repr(text) + "\n",
+            })
+
+
+class Worker:
+
+    def __init__(self, connection, request):
+        self.connection = connection
+        self.request = request
+
+    @contextlib.contextmanager
+    def close_connection(self):
+        yield
+        self.connection.close()
+
+    def handle(self):
+        try:
+            self._handle()
+        finally:
+            self.connection.close()
+
+    @staticmethod
+    def _is_expression(code):
+        tree = ast.parse(code, mode="exec")
+        return len(tree.body) == 1 and isinstance(tree.body[-1], ast.Expr)
+
+    def _handle(self):
+        stdout = SocketWriter("stdout", self.send)
+        stderr = SocketWriter("stderr", self.send)
+        repr = ReprSocketWriter("repr", self.send)
+
+        if self._is_expression(self.request):
+            sys.displayhook = repr.write
+
+            console = code.InteractiveConsole(locals=_GLOBALS_DICT)
+            code_obj = code.compile_command(self.request, symbol="single")
+
+            cb = functools.partial(console.runcode, code_obj)
+        else:
+            cb = functools.partial(exec, self.request, _GLOBALS_DICT)
+
+        with (
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
+        ):
+            try:
+                cb()
+                result = {
+                    "event": "result",
+                    "success": True,
+                }
+            except Exception:
+                traceback.print_exc()
+                result = {
+                    "event": "result",
+                    "success": False,
+                    "traceback": traceback.format_exc(),
+                }
+
+        self.send(result)
+
+    def send(self, response):
+        payload = json.dumps(response)
+        data = payload.encode("utf-8")
+        header = struct.pack("!I", len(data))
+
+        self.connection.sendall(header + data)
 
 
 class Kernel:
 
     def __init__(self, socket_path=_SOCKET_PATH):
-        self.globals_dict = {}
 
         # Remove existing connections
         try:
@@ -29,61 +124,30 @@ class Kernel:
     def loop(self):
 
         while True:
-            print('looping...')
-            request = self.read_request()
-            response = self.handle(request)
-            self.send(response)
+            connection, request = self.accept_request()
+            if request is None:
+                connection.close()
+                continue
 
-    def read_request(self):
+            worker = Worker(connection, request)
+            worker.handle()
+
+    def accept_request(self):
 
         self.sock.listen(1)
 
-        self.connection, client = self.sock.accept()
+        connection, _ = self.sock.accept()
 
-        data = self.connection.recv(1024)
+        data = connection.recv(1024)
         if not data:
-            return None
+            return connection, None
 
         length_bytes = data[:4]
         length = struct.unpack("!I", length_bytes)[0]
         payload_bytes = data[4:4+length]
         payload = payload_bytes.decode("utf-8")
 
-        return payload
-
-    def handle(self, request):
-
-        stdout = StringIO()
-        stderr = StringIO()
-
-        with (
-            contextlib.redirect_stdout(stdout),
-            contextlib.redirect_stderr(stderr),
-        ):
-            try:
-                exec(request, self.globals_dict)
-                success = True
-            except Exception:
-                stderr.write(traceback.format_exc())
-                success = False
-
-        stdout_text = stdout.getvalue()
-        stderr_text = stderr.getvalue()
-
-        return {
-            "success": success,
-            "stdout": stdout_text,
-            "stderr": stderr_text,
-        }
-
-    def send(self, response):
-        payload = json.dumps(response)
-        data = payload.encode("utf-8")
-        header = struct.pack("!I", len(data))
-
-        self.connection.sendall(header + data)
-
-        self.connection.close()
+        return connection, payload
 
 
 if __name__ == "__main__":

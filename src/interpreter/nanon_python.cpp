@@ -3,7 +3,10 @@
 #include "nanon_python.hpp"
 #include "../io/nanon_socket.hpp"
 
+#include <chrono>
 #include <iostream>
+#include <sstream>
+#include <thread>
 #include <unistd.h>
 
 #include <nlohmann/json.hpp>
@@ -46,28 +49,56 @@ bool NanonPythonInterpreter::start()
         _exit(1);
     }
 
+    // Allow python process to start up
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     return true;
 }
 
 
 ExecutionResult NanonPythonInterpreter::executeCode(std::string& code)
 {
-    NanonSocket socket;
-    bool result = socket.sendJson(code);
+    int socketFd = nanon::connectToSocket(SOCKET_PATH);
 
-    uint32_t len;
-    socket.readAll(&len, 4);
-    len = ntohl(len);
+    bool result = nanon::sendJson(socketFd, code);
+    if (!result) {
+        std::cerr << "ERROR: Could not send code" << std::endl;
+    }
 
-    std::string payload(len, '\0');
-    socket.readAll(payload.data(), len);
+    bool success = false;
 
-    auto json = nlohmann::json::parse(payload);
+    // Redirect everything to stdout, eventually it would be
+    // nice to separate these.
+    std::ostringstream sstdout;
 
-    std::cout << "Got data back c++" << std::endl;
-    std::cout << json["stdout"] << std::endl;
-    std::cout << json["stderr"] << std::endl;
+    while (true) {
+        uint32_t len;
+        nanon::readAll(socketFd, &len, 4);
+        len = ntohl(len);
 
+        std::string payload(len, '\0');
+        nanon::readAll(socketFd, payload.data(), len);
 
-    return ExecutionResult{1, "todo", "todo"};
+        auto json = nlohmann::json::parse(payload);
+
+        if (json["event"] == "stdout") {
+            sstdout << json["text"].get<std::string>();
+        } else if (json["event"] == "stderr") {
+            sstdout << json["text"].get<std::string>();
+        } else if (json["event"] == "repr") {
+            sstdout << json["text"].get<std::string>();
+        }   else if (json["event"] == "result") {
+            success = json["success"];
+            // Include the traceback in stderr
+            break;
+        }
+    }
+
+    std::string standardout = sstdout.str();
+
+    return ExecutionResult{
+        success,
+        standardout,
+        "",
+    };
 }

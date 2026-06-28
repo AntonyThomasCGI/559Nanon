@@ -2,6 +2,7 @@
 
 #include "io/nanon_textmate.hpp"
 #include "textmate/nanon_rule.hpp"
+#include "interpreter/nanon_interpreter_base.hpp"
 
 #include <QtCore/QRegularExpression>
 #include <QtCore/QPointer>
@@ -144,6 +145,8 @@ public:
 
 	void appendOutput(QString text);
 
+    void setInterpreter(NanonInterpreterBase* interpreter);
+
 protected:
     void resizeEvent(QResizeEvent *ev) override;
 
@@ -156,6 +159,10 @@ private:
     NanonEditor *editor;
 
     Highlighter *highlighter;
+
+    NanonInterpreterBase* m_interpreter = nullptr;
+
+    void onRunCode();
 
     // QHBoxLayout    *layout;
     // QPlainTextEdit *outputWindow;

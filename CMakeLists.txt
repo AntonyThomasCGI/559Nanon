@@ -16,9 +16,9 @@ include_directories(external/nlohmann/json)
 
 # Add your source files
 add_executable(${PROJECT_NAME}
+    src/interpreter/nanon_interpreter_base.hpp
     src/interpreter/nanon_python.cpp
     src/interpreter/nanon_python.hpp
-    src/io/nanon_socket.cpp
     src/io/nanon_socket.hpp
     src/io/nanon_textmate.cpp
     src/io/nanon_textmate.hpp

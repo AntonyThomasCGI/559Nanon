@@ -6,13 +6,14 @@
 #include <string>
 
 #include <QtCore/QRegularExpressionMatchIterator>
-#include <QtWidgets/QMenu>
-#include <QtWidgets/QStatusBar>
-#include <QtWidgets/QHBoxLayout>
-#include <QtWidgets/QSplitter>
+#include <QtCore/QTimer>
 #include <QtGui/QPainter>
 #include <QtGui/QTextBlock>
-#include <QtCore/QTimer>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QMenu>
+#include <QShortcut>
+#include <QtWidgets/QSplitter>
+#include <QtWidgets/QStatusBar>
 
 
 #ifndef SYNTAX_PATH
@@ -199,10 +200,11 @@ NanonWindow::NanonWindow(QWidget* parent)
     outputWindow->setReadOnly(true);
     outputWindow->setWordWrapMode(QTextOption::NoWrap);
     setMonospaced(outputWindow);
-    outputWindow->setStyleSheet("background-color:black;");
+    outputWindow->setStyleSheet("background-color:black; color:Gainsboro");
 
     editor = new NanonEditor;
     editor->setWordWrapMode(QTextOption::NoWrap);
+
     setMonospaced(editor);
 
     highlighter = new Highlighter(editor->document());
@@ -215,7 +217,8 @@ NanonWindow::NanonWindow(QWidget* parent)
 
     createStatusBar();
 
-    std::cout << "here " << std::endl;
+    QShortcut *shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Return), this);
+    connect(shortcut, &QShortcut::activated, this, &NanonWindow::onRunCode);
 
     QString tempText = R""""(
 import hi
@@ -249,14 +252,30 @@ async def my_func():
 
 
 )"""";
-    std::cout << "Setting editor text" << std::endl;    
-    //editor->setPlainText(tempText);
-
-    std::cout << 'done' << std::endl;
 }
 
 NanonWindow::~NanonWindow()
 {}
+
+
+void NanonWindow::onRunCode()
+{
+    if (m_interpreter == nullptr) {
+        std::cout << "WARNING no interpreter set" << std::endl;
+        return;
+    }
+
+    QString content = editor->toPlainText();
+    std::string strContent = content.toStdString();
+
+    ExecutionResult result = m_interpreter->executeCode(strContent);
+
+    QString resultStdout = QString::fromStdString(result.stdout);
+    QString resultStderr = QString::fromStdString(result.stderr);
+    outputWindow->moveCursor(QTextCursor::End);
+    outputWindow->insertPlainText(resultStdout);
+}
+
 
 void NanonWindow::createStatusBar()
 {
@@ -285,6 +304,12 @@ void NanonWindow::resizeEvent(QResizeEvent *ev)
     // hacky work around for monospace being lost on window change.
     setMonospaced(outputWindow);
     setMonospaced(editor);
+}
+
+
+void NanonWindow::setInterpreter(NanonInterpreterBase* interpreter)
+{
+    m_interpreter = interpreter;
 }
 
 
