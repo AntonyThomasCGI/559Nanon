@@ -25,6 +25,10 @@ add_executable(${PROJECT_NAME}
     src/nanon.cpp
     src/nanon.hpp
     src/nanon_standalone.cpp
+    src/textmate/nanon_engine.cpp
+    src/textmate/nanon_engine.hpp
+    src/textmate/nanon_grammar.cpp
+    src/textmate/nanon_grammar.hpp
     src/textmate/nanon_rule.cpp
     src/textmate/nanon_rule.hpp
 )

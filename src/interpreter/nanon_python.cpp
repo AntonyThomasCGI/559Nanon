@@ -77,7 +77,7 @@ ExecutionResult NanonPythonInterpreter::executeCode(std::string& code)
         len = ntohl(len);
 
         std::string payload(len, '\0');
-        nanon::readAll(socketFd, payload.data(), len);
+        nanon::readAll(socketFd, static_cast<void*>(payload.data()), len);
 
         auto json = nlohmann::json::parse(payload);
 

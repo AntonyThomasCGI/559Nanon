@@ -1,20 +1,43 @@
 #pragma once
 
-#include <vector>
-#include <tuple>
-#include <QtCore/QMap>
 #include <QtCore/QString>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QList>
 
-// #include "textmate/nanon_pattern.hpp"
+#include <memory>
+#include <tuple>
+#include <vector>
+
+
+// Forward declaration.
+class Rule;
+
+
+class RuleContainer
+{
+public:
+    RuleContainer() = default;
+    virtual ~RuleContainer() = default;
+
+    std::vector<Rule*> patterns;
+
+};
+
+
+class RuleGroup : public RuleContainer
+{
+public:
+    RuleGroup() = default;
+    virtual ~RuleGroup() = default;
+};
+
 
 
 // Region represents the bounds of a successful match.
 struct Region {
     QString scope;
     long start;
-    long end;
+    long length;
 };
 
 // Forward declaration.
@@ -33,8 +56,8 @@ public:
     QString name;
     // QString contentName;
 
-    // virtual void getPatterns(QList<QRegularExpression> &out) = 0;
-    virtual std::tuple<State, Regions> search(const QString &text) = 0;
+    std::vector<std::unique_ptr<Rule>> patterns;
+
 };
 
 // class CaptureRule : public Rule
@@ -47,24 +70,32 @@ class MatchRule : public Rule
 public:
     MatchRule(QString name, QString pattern);
 
-    std::tuple<State, Regions> search(const QString &text) override;
+    QRegularExpression regex;
+};
 
-private:
-    QRegularExpression match;
-    // QMap<int, Pattern> captures;
 
+struct Capture {
+    int group;
+    QString name;
 };
 
 
 class BeginEndRule : public Rule
 {
 public:
+
+
     BeginEndRule(QString name, QString begin, QString end);
 
-    std::tuple<State, Regions> search(const QString &text) override;
+    std::tuple<State, Regions> search(const QString &text);
 
     QRegularExpression begin;
     QRegularExpression end;
+
+    std::vector<Capture> beginCaptures;
+    std::vector<Capture> endCaptures;
+
+    RuleGroup children;
 };
 
 
@@ -91,19 +122,7 @@ public:
 //     std::vector<Rule> patterns;
 // };
 
-class Grammar
-{
-public:
-    Grammar(QString scopeName, QMap<QString, QVariant> rawRule);
-    virtual ~Grammar();
 
-    QString scopeName;
-    std::vector<std::unique_ptr<Rule>> rules;
-
-private:
-    void makeRules(QMap<QString, QVariant> rawRule);
-    // QMap<QString, Rule> repository;
-};
 
 
 // https://github.com/microsoft/vscode-textmate/blob/main/src/rule.ts

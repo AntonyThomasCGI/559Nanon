@@ -25,27 +25,13 @@ Rule::~Rule()
 
 
 MatchRule::MatchRule(QString name, QString pattern)
-: Rule(name), match(pattern) {}
-
-
-std::tuple<State, Regions> MatchRule::search(const QString &text)
-{
-    Regions regions;
-
-    QRegularExpressionMatchIterator matchIterator = match.globalMatch(text);
-    while (matchIterator.hasNext()) {
-        QRegularExpressionMatch match = matchIterator.next();
-
-        Region region = {name, match.capturedStart(), match.capturedEnd()};
-        regions.push_back(region);
-    }
-
-    return std::make_tuple(State{}, regions);
-}
+: Rule(name), regex(pattern) {}
 
 
 BeginEndRule::BeginEndRule(QString name, QString begin, QString end)
 : Rule(name), begin(begin), end(end) {}
+
+
 
 // todo: maybe need two functions: start / search so that we can easily pass state
 // back into the 'search' to try match only end. then start only becomes responsible
@@ -75,95 +61,3 @@ std::tuple<State, Regions> BeginEndRule::search(const QString &text)
     return std::make_tuple(State{}, regions);
 }
 
-
-Grammar::Grammar(QString scopeName, QMap<QString, QVariant> rawRule)
-{
-    this->scopeName = scopeName;
-
-    makeRules(rawRule);
-}
-
-
-Grammar::~Grammar()
-{}
-
-void Grammar::makeRules(QMap<QString, QVariant> rawRule)
-{
-
-    if (rawRule.contains("match") && rawRule.contains("name")) {
-        QString name = rawRule.value("name").toString();
-        QString matchPattern = rawRule.value("match").toString();
-
-        rules.push_back( std::unique_ptr<Rule>(new MatchRule(name, matchPattern)) );
-    }
-
-
-    if (rawRule.contains("begin") && rawRule.contains("end")) {
-        QString name = rawRule.value("name").toString();
-        QString begin = rawRule.value("begin").toString();
-        QString end = rawRule.value("end").toString();
-
-        rules.push_back( std::unique_ptr<Rule>(new BeginEndRule(name, begin, end)));
-    }
-    // if (map.contains("end"))
-    //     rule.end = QRegularExpression(map.value("end").toString());
-    // if (map.contains("while"))
-    //     rule.while_ = QRegularExpression(map.value("while").toString());
-    // if (map.contains("include"))
-    //     rule.include = map.value("include").toString();
-    // if (map.contains("contentName"))
-    //     rule.contentName = map.value("contentName").toString();
-
-    // This won't work when pattern starts depending on parent rules.
-    // This just blindly adds everything as it's own rule.
-    if (rawRule.contains("patterns")) {
-        QList<QVariant> allPatterns = rawRule.value("patterns").toList();
-        for (int i = 0; i < allPatterns.size(); ++i) {
-            QMap<QString, QVariant> patternMap = allPatterns.at(i).toMap();
-
-            makeRules(patternMap);
-        }
-    }
-
-    // if (map.contains("captures")) {
-    //     QMap<QString, QVariant> capturesMap = map.value("captures").toMap();
-    //     QMapIterator<QString, QVariant> it(capturesMap);
-    //     while (it.hasNext()) {
-    //         it.next();
-    //         QMap<QString, QVariant> m = it.value().toMap();
-    //         rule.captures.insert(it.key().toInt(), makeRule(m, blockStateID));
-    //     }
-    // }
-
-    // if (map.contains("beginCaptures")) {
-    //     QMap<QString, QVariant> beginCapturesMap = map.value("beginCaptures").toMap();
-    //     QMapIterator<QString, QVariant> it(beginCapturesMap);
-    //     while (it.hasNext()) {
-    //         it.next();
-    //         QMap<QString, QVariant> m = it.value().toMap();
-    //         rule.beginCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
-    //     }
-    // }
-
-    // if (map.contains("endCaptures")) {
-    //     QMap<QString, QVariant> endCapturesMap = map.value("endCaptures").toMap();
-    //     QMapIterator<QString, QVariant> it(endCapturesMap);
-    //     while (it.hasNext()) {
-    //         it.next();
-    //         QMap<QString, QVariant> m = it.value().toMap();
-    //         rule.endCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
-    //     }
-    // }
-
-    // if (map.contains("whileCaptures")) {
-    //     QMap<QString, QVariant> whileCapturesMap = map.value("whileCaptures").toMap();
-    //     QMapIterator<QString, QVariant> it(whileCapturesMap);
-    //     while (it.hasNext()) {
-    //         it.next();
-    //         QMap<QString, QVariant> m = it.value().toMap();
-    //         rule.whileCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
-    //     }
-    // }
-
-    // return rule;
-}

@@ -61,7 +61,10 @@ class Worker:
 
     @staticmethod
     def _is_expression(code):
-        tree = ast.parse(code, mode="exec")
+        try:
+            tree = ast.parse(code, mode="exec")
+        except SyntaxError:
+            return False
         return len(tree.body) == 1 and isinstance(tree.body[-1], ast.Expr)
 
     def _handle(self):

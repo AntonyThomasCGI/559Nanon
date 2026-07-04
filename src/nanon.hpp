@@ -1,7 +1,8 @@
 #pragma once
 
 #include "io/nanon_textmate.hpp"
-#include "textmate/nanon_rule.hpp"
+#include "textmate/nanon_engine.hpp"
+#include "textmate/nanon_grammar.hpp"
 #include "interpreter/nanon_interpreter_base.hpp"
 
 #include <QtCore/QRegularExpression>
@@ -10,6 +11,8 @@
 #include <QtWidgets/QPlainTextEdit>
 #include <QtGui/QSyntaxHighlighter>
 #include <QtGui/QTextDocument>
+
+#include <memory>
 
 
 class NanonEditor : public QPlainTextEdit
@@ -78,60 +81,22 @@ protected:
     void highlightBlock(const QString &text);
 
 private:
-    // void reformatBlocks(int from, int charsRemoved, int charsAdded);
-//     // struct HighlightingRule
-//     // {
-//     //     QRegularExpression pattern;
-//     //     QTextCharFormat format;
-//     // };
-    // struct Rule {
-    //     int scopeID;
-    //     QString name;
-    //     QRegularExpression match;
-    //     QRegularExpression begin;
-    //     QRegularExpression end;
-    //     QRegularExpression while_;
-    //     QString include;
-    //     QString contentName;
-    //     QMap<int, Rule> captures;
-    //     QMap<int, Rule> beginCaptures;
-    //     QMap<int, Rule> endCaptures;
-    //     QMap<int, Rule> whileCaptures;
-    //     std::vector<Rule> patterns;
-    // };
-
-    // QVector<QString> previousBlockScopes;
-    // QVector<QString> currentBlockScopes;
-
-//     void setDocument(QTextDocument *doc);
 
 
-    // Rule makeRule(QMap<QString, QVariant> map, int &blockStateID);
-
-//     QTextDocument *doc;
-
-//     // QVector<HighlightingRule> highlightingRules;
+    struct BlockState
+    {
+        std::vector<Context> stack;
+    };
 
     void setSyntaxFromFile(QString fileName);
 
-//     QRegularExpression commentStartExpression;
-//     QRegularExpression commentEndExpression;
-
     QMap<QString, QTextCharFormat> formats;
-    // QTextCharFormat keywordFormat;
-    // QTextCharFormat multiLineFormat;
 
-//     int custumBlockState;
     ScopeBlockData* previousBlockUserData() const;
 
-    // Rule rule;
-    Grammar *grammar;
-//     QVector<QString> scopes;
-//     // QTextCharFormat classFormat;
-//     // QTextCharFormat singleLineCommentFormat;
-//     // QTextCharFormat multiLineCommentFormat;
-//     // QTextCharFormat quotationFormat;
-//     // QTextCharFormat functionFormat;
+    std::unique_ptr<Grammar> m_grammar;
+    std::unique_ptr<TextMateEngine> m_engine;
+    QHash<int, BlockState> m_stateCache;
 };
 
 

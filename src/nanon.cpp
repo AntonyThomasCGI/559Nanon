@@ -1,5 +1,6 @@
 
 #include "nanon.hpp"
+#include "textmate/nanon_rule.hpp"
 
 #include <iostream>
 #include <vector>
@@ -66,7 +67,8 @@ void NanonEditor::resizeEvent(QResizeEvent *e)
 
 void NanonEditor::keyPressEvent(QKeyEvent *e)
 {
-    if (e->key() == 83 && e->modifiers() == (Qt::KeyboardModifier::AltModifier | Qt::KeyboardModifier::ShiftModifier)) {
+    // Draw scopes on Ctrl+s
+    if (e->key() == 83 && e->modifiers() == (Qt::KeyboardModifier::ControlModifier)) {
         QTextCursor cursor = textCursor();
         QTextBlock currentBlock = cursor.block();
         if (!currentBlock.isValid())
@@ -81,7 +83,8 @@ void NanonEditor::keyPressEvent(QKeyEvent *e)
             QMenu menu("Scopes", this);
             bool hasScope = false;
             for (auto & region : scopeData->regions) {
-                if (region.start <= cursorPosition && (cursorPosition <= region.end || region.end == -1)) {
+                long end = region.start + region.length;
+                if (region.start <= cursorPosition && (cursorPosition <= end || end == -1)) {
                     menu.addAction(region.scope);
                     hasScope = true;
                     // std::cout << qUtf8Printable(scope.name) << " " << std::to_string(scope.startIndex) << " " << std::to_string(scope.endIndex) << std::endl;
@@ -221,38 +224,15 @@ NanonWindow::NanonWindow(QWidget* parent)
     connect(shortcut, &QShortcut::activated, this, &NanonWindow::onRunCode);
 
     QString tempText = R""""(
-import hi
 
-def hi():
-	pass
-
-print('hi')
-
-#comment . asd
-print('next') # comment
-'
-wow this did not work
-
-lmao
-time to unexist myself
-' hi '
-more' done
-
-'the quick brown fox jumps over the lazy dog'
-
-"the quick brown fox jumps over the lazy dog"
-
-"hi"
-
-async def my_func():
-	pass
-
-
-
-
+print('hello world')
 
 )"""";
+
+    editor->setPlainText(tempText);
+
 }
+
 
 NanonWindow::~NanonWindow()
 {}
@@ -319,9 +299,11 @@ Highlighter::Highlighter(QTextDocument *parent)
     // QString file = "C:\\dev\\559Nanon\\pip-requirements.tmLanguage.json";
     // QString file = "C:\\dev\\559Nanon\\Python.tmLanguage";
     QString syntaxPath = SYNTAX_PATH;
-    QString file = syntaxPath + "Test.tmLanguage.json";
+    QString file = syntaxPath + "TestPython.tmLanguage.json";
 
     this->setSyntaxFromFile(file);
+
+    m_engine = std::make_unique<TextMateEngine>(&m_grammar->root);
 }
 
 
@@ -340,200 +322,36 @@ ScopeBlockData* Highlighter::previousBlockUserData() const
 
 void Highlighter::highlightBlock(const QString &text)
 {
-    ScopeBlockData * scopeData = new ScopeBlockData;
 
-    for (std::unique_ptr<Rule> &rule : grammar->rules) {
-        auto[state, regions] = rule->search(text);
-        // Regions regions = rule->search(text);
-        for (Region &region : regions) {
-            // TODO move out of loop. highly unoptimized here.
-            if (formats.contains(region.scope)) {
-                // Set highlighting.
-                setFormat(region.start, region.end - region.start, formats.value(region.scope));
-            }
-            // Add to user data.
-            scopeData->regions.push_back(region);
+    int block = currentBlock().blockNumber();
+    int prev = previousBlockState();
+
+    BlockState state;
+    if (m_stateCache.contains(block - 1)) {
+        m_engine->stack = m_stateCache[block - 1].stack;
+    } else {
+        m_engine->stack.clear();
+        m_engine->stack.push_back({&m_grammar->root, nullptr});
+    }
+
+    auto regions = m_engine->scanLine(text);
+    //std::cout << "regions for block " << std::to_string(block) << std::endl;
+    //for (auto& region : regions) {
+    //    std::cout << region.scope.toStdString() << " " << std::to_string(region.start) << " " << std::to_string(region.length) << std::endl;
+    //}
+
+    state.stack = m_engine->stack;
+    m_stateCache[block] = state;
+    setCurrentBlockState(block);
+
+    for (auto& region : regions)
+    {
+        if (formats.contains(region.scope)) {
+            // Set highlighting.
+            setFormat(region.start, region.length, formats.value(region.scope));
         }
     }
-    setCurrentBlockUserData(scopeData);
 }
-
-
-// void Highlighter::highlightBlock(const QString &text)
-// {
-//     ScopeBlockData *scopeData = new ScopeBlockData;
-
-//     for (Rule & pattern : rule.patterns) {
-//         if (pattern.match != QRegularExpression{}) {
-//             QRegularExpressionMatchIterator matchIterator = pattern.match.globalMatch(text);
-
-//             while (matchIterator.hasNext()) {
-//                 QRegularExpressionMatch match = matchIterator.next();
-//                 setFormat(match.capturedStart(), match.capturedLength(), keywordFormat);
-
-//                 if (!pattern.captures.isEmpty()) {
-//                     // Try to match captures groups.
-//                     QMapIterator<int, Rule> it(pattern.captures);
-//                     while (it.hasNext()) {
-//                         it.next();
-//                         int matchN = it.key();
-//                         Rule captureRule = it.value();
-//                         if (!captureRule.name.isEmpty()) {
-//                             QString capGroup = match.captured(matchN);
-//                             if (capGroup.isNull())
-//                                 continue;
-
-//                             int start = text.indexOf(capGroup);
-//                             Scope thisScope = {captureRule.name, start, start + capGroup.length()};
-//                             scopeData->scopes.push_back(thisScope);
-//                         }
-//                         // TODO: Possibly need to handle case where capture group provides more than name.
-//                     }
-//                 } else {
-//                     Scope thisScope = {pattern.name, match.capturedStart(), match.capturedEnd()};
-//                     scopeData->scopes.push_back(thisScope);
-//                 }
-//             }
-//         }
-//     }
-
-//     ScopeBlockData *prevScopeData = previousBlockUserData();
-
-//     QVector<Scope> existingScopes;
-//     if (prevScopeData != NULL) {
-//         for (Scope prevScope : prevScopeData->scopes) {
-//             if (prevScope.endIndex == -1) {
-//                 // Scope did not end.
-//                 existingScopes.push_back(prevScope);
-//             }
-//         }
-//     }
-
-//     for (Rule & pattern : rule.patterns) {
-//         if (pattern.begin != QRegularExpression{} && pattern.end != QRegularExpression{} && pattern.name != QString{}) {
-//             int startIndex = 0;
-
-//             for (Scope scope : existingScopes) {
-//                 if (scope.name == pattern.name) {
-//                     // We are already in scope.
-//                     QRegularExpressionMatch match = pattern.end.match(text, startIndex);
-//                     int endIndex = match.capturedStart();
-//                     if (endIndex > -1) {
-//                         // End of capture found, remove from next scopes.
-//                         setFormat(startIndex, endIndex + 1, multiLineFormat);
-
-//                         // Add the new scope.
-//                         Scope newScope = {pattern.name, -1, endIndex};
-//                         scopeData->scopes.push_back(newScope);
-
-//                         startIndex = endIndex + 1; // Don't match the same symbol.
-//                     } else {
-//                         // Not found, set whole line.
-//                         setFormat(startIndex, text.length(), multiLineFormat);
-//                         startIndex = text.length();
-
-//                         // Add scope to scope data.
-//                         Scope newScope = {pattern.name, -1, -1};
-//                         scopeData->scopes.push_back(newScope);
-//                     }
-//                     break;
-//                 }
-//             }
-
-//             startIndex = text.indexOf(pattern.begin, startIndex);
-//             while (startIndex >= 0) {
-//                 QRegularExpressionMatch match = pattern.end.match(text, startIndex + 1);
-//                 int endIndex = match.capturedStart();
-//                 int capturedLength = 0;
-//                 if (endIndex == -1) {  // End is not in this block, add to scopes for next block.
-//                     capturedLength = text.length() - startIndex;
-
-//                 } else {  // End of capture found, remove from scopes.
-//                     capturedLength = endIndex - startIndex + match.capturedLength();
-//                 }
-//                 Scope newScope = {pattern.name, startIndex, endIndex};
-//                 scopeData->scopes.push_back(newScope);
-
-//                 setFormat(startIndex, capturedLength, multiLineFormat);
-//                 startIndex = text.indexOf(pattern.begin, startIndex + capturedLength);
-//             }
-//         }
-//     }
-//     setCurrentBlockUserData(scopeData);
-// }
-
-
-// Highlighter::Rule Highlighter::makeRule(QMap<QString, QVariant> map, int &blockStateID)
-// {
-//     Rule rule = Rule();
-
-//     rule.scopeID = blockStateID;
-//     blockStateID++;
-//     if (map.contains("name"))
-//         rule.name = map.value("name").toString();
-//     if (map.contains("match"))
-//         rule.match = QRegularExpression(map.value("match").toString());
-//     if (map.contains("begin"))
-//         rule.begin = QRegularExpression(map.value("begin").toString());
-//     if (map.contains("end"))
-//         rule.end = QRegularExpression(map.value("end").toString());
-//     if (map.contains("while"))
-//         rule.while_ = QRegularExpression(map.value("while").toString());
-//     if (map.contains("include"))
-//         rule.include = map.value("include").toString();
-//     if (map.contains("contentName"))
-//         rule.contentName = map.value("contentName").toString();
-
-//     if (map.contains("patterns")) {
-//         QList<QVariant> allPatterns = map.value("patterns").toList();
-//         for (int i = 0; i < allPatterns.size(); ++i) {
-//             QMap<QString, QVariant> patternMap = allPatterns.at(i).toMap();
-//             rule.patterns.push_back(makeRule(patternMap, blockStateID));
-//         }
-//     }
-
-//     if (map.contains("captures")) {
-//         QMap<QString, QVariant> capturesMap = map.value("captures").toMap();
-//         QMapIterator<QString, QVariant> it(capturesMap);
-//         while (it.hasNext()) {
-//             it.next();
-//             QMap<QString, QVariant> m = it.value().toMap();
-//             rule.captures.insert(it.key().toInt(), makeRule(m, blockStateID));
-//         }
-//     }
-
-//     if (map.contains("beginCaptures")) {
-//         QMap<QString, QVariant> beginCapturesMap = map.value("beginCaptures").toMap();
-//         QMapIterator<QString, QVariant> it(beginCapturesMap);
-//         while (it.hasNext()) {
-//             it.next();
-//             QMap<QString, QVariant> m = it.value().toMap();
-//             rule.beginCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
-//         }
-//     }
-
-//     if (map.contains("endCaptures")) {
-//         QMap<QString, QVariant> endCapturesMap = map.value("endCaptures").toMap();
-//         QMapIterator<QString, QVariant> it(endCapturesMap);
-//         while (it.hasNext()) {
-//             it.next();
-//             QMap<QString, QVariant> m = it.value().toMap();
-//             rule.endCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
-//         }
-//     }
-
-//     if (map.contains("whileCaptures")) {
-//         QMap<QString, QVariant> whileCapturesMap = map.value("whileCaptures").toMap();
-//         QMapIterator<QString, QVariant> it(whileCapturesMap);
-//         while (it.hasNext()) {
-//             it.next();
-//             QMap<QString, QVariant> m = it.value().toMap();
-//             rule.whileCaptures.insert(it.key().toInt(), makeRule(m, blockStateID));
-//         }
-//     }
-
-//     return rule;
-// }
 
 
 void Highlighter::setSyntaxFromFile(QString fileName)
@@ -549,16 +367,15 @@ void Highlighter::setSyntaxFromFile(QString fileName)
 
     QMap<QString, QVariant> map = tmData.toMap();
 
-    // int startId = 0;
-    // rule = this->makeRule(map, startId);
-
-    grammar = new Grammar("my scope", map);
+    m_grammar = std::make_unique<Grammar>("my scope", map);
 
     QTextCharFormat keywordFormat;
     QTextCharFormat multiLineFormat;
+    QTextCharFormat commentFormat;
 
     keywordFormat.setForeground(Qt::darkMagenta);
     multiLineFormat.setForeground(QColor(191, 255, 0, 255));
+    commentFormat.setForeground(Qt::darkGreen);
 
     // super hardcoded atm lol.
     // this will eventually read from a json file.
@@ -571,4 +388,9 @@ void Highlighter::setSyntaxFromFile(QString fileName)
     formats["storage.modifier.async.python"] = keywordFormat;
     formats["storage.type.function.python"] = keywordFormat;
     formats["keyword.control.todo.example"] = keywordFormat;
+
+    formats["comment.line.number-sign.python"] = commentFormat;
+    formats["string.quoted.single.python"] = multiLineFormat;
+    formats["string.quoted.double.python"] = multiLineFormat;
+    formats["keyword.control.python"] = keywordFormat;
 }
