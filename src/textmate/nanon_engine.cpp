@@ -39,6 +39,19 @@ std::vector<Region> TextMateEngine::scanLine(const QString& text)
                     match.capturedLength()
                 });
 
+                for (Capture& cap : ctx.activeRule->endCaptures) {
+                    int start = match.capturedStart(cap.group);
+                    int length = match.capturedLength(cap.group);
+
+                    if (start >= 0) {
+                        regions.push_back({
+                            cap.name,
+                            start,
+                            length
+                        });
+                    }
+                }
+
                 pos += match.capturedLength();
                 stack.pop_back();
                 continue;
@@ -50,71 +63,19 @@ std::vector<Region> TextMateEngine::scanLine(const QString& text)
 
         for (Rule* rule : ctx.group->patterns)
         {
-
-            // MATCH RULE
-            if (auto* m = dynamic_cast<MatchRule*>(rule))
+            // INCLUDE RULE
+            if (auto* i = dynamic_cast<IncludeRule*>(rule))
             {
-                auto match = m->regex.match(text, pos);
-
-                if (match.hasMatch() && match.capturedStart() == 0)
+                if (i->resolved)
                 {
-                    regions.push_back({
-                        m->name,
-                        pos,
-                        match.capturedLength()
-                    });
-
-                    pos += match.capturedLength();
-                    matched = true;
-                    break;
-                }
-            }
-
-            // BEGIN/END RULE
-            else if (auto* b = dynamic_cast<BeginEndRule*>(rule))
-            {
-
-                auto match = b->begin.match(
-                    text,
-                    pos,
-                    QRegularExpression::NormalMatch,
-                    QRegularExpression::AnchorAtOffsetMatchOption
-                );
-
-                if (match.hasMatch())
-                {
-                    regions.push_back({
-                        b->name,
-                        pos,
-                        match.capturedLength()
-                    });
-
-                    pos += match.capturedLength();
-
-                    // PUSH CONTEXT
-                    stack.push_back({
-                        &b->children,
-                        b
-                    });
-
-                    for (Capture& cap : b->beginCaptures) {
-                        int start = match.capturedStart(cap.group);
-                        int length = match.capturedLength(cap.group);
-
-                        if (start >= 0) {
-                            regions.push_back({
-                                cap.name,
-                                start,
-                                length
-                            });
-                        }
+                    for (Rule* r : i->resolved->patterns)
+                    {
+                        matched |= applyRule(r, text, pos, regions);
                     }
-
-                    matched = true;
-                    break;
                 }
+            } else {
+                matched = applyRule(rule, text, pos, regions);
             }
-
         }
 
         // STEP 3: FALLBACK (consume 1 char)
@@ -134,4 +95,77 @@ std::vector<Region> TextMateEngine::scanLine(const QString& text)
     }
 
     return regions;
+}
+
+
+bool TextMateEngine::applyRule(Rule* rule, const QString& text, int& pos, std::vector<Region>& regions)
+{
+    // MATCH RULE
+    if (auto* m = dynamic_cast<MatchRule*>(rule))
+    {
+        auto match = m->regex.match(
+            text,
+            pos,
+            QRegularExpression::NormalMatch,
+            QRegularExpression::AnchorAtOffsetMatchOption
+        );
+
+        if (match.hasMatch())
+        {
+            regions.push_back({
+                m->name,
+                pos,
+                match.capturedLength()
+            });
+
+            pos += match.capturedLength();
+            return true;
+        }
+    }
+
+    // BEGIN/END RULE
+    else if (auto* b = dynamic_cast<BeginEndRule*>(rule))
+    {
+
+        auto match = b->begin.match(
+            text,
+            pos,
+            QRegularExpression::NormalMatch,
+            QRegularExpression::AnchorAtOffsetMatchOption
+        );
+
+        if (match.hasMatch())
+        {
+            regions.push_back({
+                b->name,
+                pos,
+                match.capturedLength()
+            });
+
+            pos += match.capturedLength();
+
+            // PUSH CONTEXT
+            stack.push_back({
+                &b->children,
+                b
+            });
+
+            for (Capture& cap : b->beginCaptures) {
+                int start = match.capturedStart(cap.group);
+                int length = match.capturedLength(cap.group);
+
+                if (start >= 0) {
+                    regions.push_back({
+                        cap.name,
+                        start,
+                        length
+                    });
+                }
+            }
+
+            return true;
+        }
+    }
+
+    return false;
 }

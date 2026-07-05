@@ -10,7 +10,7 @@
 #include <vector>
 
 
-class Grammar : public RuleContainer
+class Grammar : public RuleGroup
 {
 public:
     Grammar(QString scopeName, QMap<QString, QVariant> rawRule);

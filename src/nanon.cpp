@@ -2,23 +2,27 @@
 #include "nanon.hpp"
 #include "textmate/nanon_rule.hpp"
 
-#include <iostream>
-#include <vector>
-#include <string>
-
+#include <QFont>
+#include <QFontDatabase>
+#include <QShortcut>
 #include <QtCore/QRegularExpressionMatchIterator>
 #include <QtCore/QTimer>
 #include <QtGui/QPainter>
 #include <QtGui/QTextBlock>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QMenu>
-#include <QShortcut>
 #include <QtWidgets/QSplitter>
 #include <QtWidgets/QStatusBar>
 
+#include <filesystem>
+#include <iostream>
+#include <string>
+#include <vector>
 
-#ifndef SYNTAX_PATH
-#define SYNTAX_PATH ""
+
+
+#ifndef RESOURCE_PATH
+#define RESOURCE_PATH ""
 #endif
 
 
@@ -65,41 +69,6 @@ void NanonEditor::resizeEvent(QResizeEvent *e)
     lineNumberArea->setGeometry(QRect(cr.left(), cr.top(), lineNumberAreaWidth(), cr.height()));
 }
 
-void NanonEditor::keyPressEvent(QKeyEvent *e)
-{
-    // Draw scopes on Ctrl+s
-    if (e->key() == 83 && e->modifiers() == (Qt::KeyboardModifier::ControlModifier)) {
-        QTextCursor cursor = textCursor();
-        QTextBlock currentBlock = cursor.block();
-        if (!currentBlock.isValid())
-            return;
-
-        int cursorPosition = cursor.positionInBlock();
-
-        QTextBlockUserData *userData = currentBlock.userData();
-        ScopeBlockData *scopeData = dynamic_cast<ScopeBlockData*> (userData);
-        if (scopeData!=NULL) {
-            const QPoint cursorCoordinates = cursorRect().bottomRight();
-            QMenu menu("Scopes", this);
-            bool hasScope = false;
-            for (auto & region : scopeData->regions) {
-                long end = region.start + region.length;
-                if (region.start <= cursorPosition && (cursorPosition <= end || end == -1)) {
-                    menu.addAction(region.scope);
-                    hasScope = true;
-                    // std::cout << qUtf8Printable(scope.name) << " " << std::to_string(scope.startIndex) << " " << std::to_string(scope.endIndex) << std::endl;
-                }
-            }
-            if (!hasScope) {
-                menu.addAction("Not in a scope");
-            }
-            menu.exec(mapToGlobal(cursorCoordinates));
-        }
-    } else {
-        QPlainTextEdit::keyPressEvent(e);
-    }
-}
-
 void NanonEditor::updateLineNumberArea(const QRect &rect, int dy)
 {
     if (dy)
@@ -144,6 +113,8 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
     QRectF bbRect = blockBoundingRect(block);
     int bottom = top + qRound(bbRect.height());
 
+    QFont font = this->font();
+
     while (block.isValid() && top <= event->rect().bottom()) {
         if (block.isVisible() && bottom >= event->rect().top()) {
 
@@ -156,6 +127,7 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
             QPoint rightPnt(qRound(lineNumberArea->width() / 1.5), yValue);
 
             painter.setPen(drawPen);
+            painter.setFont(font);
             painter.drawLine(leftPnt, rightPnt);
 
             int width = qRound(lineNumberArea->width() / 6.0);
@@ -195,6 +167,7 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
 
 NanonWindow::NanonWindow(QWidget* parent)
 {
+    this->setWindowTitle("559 Nanon");
     this->setStyleSheet("background-color:white;");
 
     QSplitter *splitter = new QSplitter(Qt::Vertical);
@@ -202,13 +175,30 @@ NanonWindow::NanonWindow(QWidget* parent)
     outputWindow = new QPlainTextEdit;
     outputWindow->setReadOnly(true);
     outputWindow->setWordWrapMode(QTextOption::NoWrap);
-    setMonospaced(outputWindow);
     outputWindow->setStyleSheet("background-color:black; color:Gainsboro");
 
     editor = new NanonEditor;
     editor->setWordWrapMode(QTextOption::NoWrap);
 
-    setMonospaced(editor);
+    // Load fonts
+    std::filesystem::path resourcePath = RESOURCE_PATH;
+    std::filesystem::path fontPath = resourcePath / "fonts";
+
+    std::filesystem::path defaultFont = fontPath / "Courier_Prime" / "CourierPrime-Regular.ttf";
+
+    std::cout << "Loading font: " << defaultFont << std::endl;
+    int fontId = QFontDatabase::addApplicationFont(defaultFont.string().c_str());
+
+    QStringList fontFamilies = QFontDatabase::applicationFontFamilies(fontId);
+    if (!fontFamilies.empty()) {
+        std::cout << "Loaded font: " << fontFamilies.at(0).toStdString() << std::endl;
+        QString fontFamily = fontFamilies.at(0);
+        this->setFont(QFont(fontFamily));
+        editor->setFont(QFont(fontFamily));
+        outputWindow->setFont(QFont(fontFamily));
+    } else {
+        std::cerr << "Failed to load font: " << defaultFont.string() << std::endl;
+    }
 
     highlighter = new Highlighter(editor->document());
 
@@ -216,16 +206,37 @@ NanonWindow::NanonWindow(QWidget* parent)
     splitter->addWidget(editor);
 
     setCentralWidget(splitter);
-    // centralWidget()->setLayout(layout);
 
     createStatusBar();
 
     QShortcut *shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Return), this);
     connect(shortcut, &QShortcut::activated, this, &NanonWindow::onRunCode);
 
-    QString tempText = R""""(
+    QShortcut *scopesShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_S), this);
+    connect(scopesShortcut, &QShortcut::activated, this, &NanonWindow::onShowScopesAtCursor);
 
-print('hello world')
+    QString tempText = R""""(# Welcome to 559 Nanon!
+
+print('this is a test')
+
+
+def fn(a, b, limit=10, count=0):
+    """This is an example fibonachi function."""
+    if count >= limit:
+        return
+
+    c = a + b
+    print(f"{c} (iteration={count + 1})")
+    fn(b, c, limit=limit, count=count + 1)
+
+
+fn(0, 1)
+
+if True:
+    pass
+else:
+    pass
+
 
 )"""";
 
@@ -257,6 +268,34 @@ void NanonWindow::onRunCode()
 }
 
 
+void NanonWindow::onShowScopesAtCursor()
+{
+    QTextCursor cursor = editor->textCursor();
+    QTextBlock currentBlock = cursor.block();
+    if (!currentBlock.isValid()) {
+        return;
+    }
+
+    int cursorPosition = cursor.positionInBlock();
+
+    QVector<QString> scopes = highlighter->scopesAtPosition(currentBlock.text(), cursorPosition);
+
+    const QPoint cursorCoordinates = editor->cursorRect().bottomRight();
+    QMenu menu("Scopes", this);
+    bool hasScope = false;
+    for (auto & scope : scopes) {
+        menu.addAction(scope);
+        hasScope = true;
+        // std::cout << qUtf8Printable(scope.name) << " " << std::to_string(scope.startIndex) << " " << std::to_string(scope.endIndex) << std::endl;
+    }
+    if (!hasScope) {
+        menu.addAction("Not in a scope");
+    }
+    menu.exec(editor->viewport()->mapToGlobal(cursorCoordinates));
+}
+
+
+
 void NanonWindow::createStatusBar()
 {
     statusBar()->showMessage("Ready");
@@ -269,23 +308,6 @@ void NanonWindow::appendOutput(QString text)
     this->outputWindow->moveCursor (QTextCursor::End);
 }
 
-void NanonWindow::setMonospaced(QPlainTextEdit *textEdit)
-{
-    QTextDocument *doc = textEdit->document();
-    QFont font("monospaced");
-    font.setStyleHint(QFont::Monospace);
-    // QFont font = doc->defaultFont();
-    // font.setFamily("Courier New");
-    doc->setDefaultFont(font);
-}
-
-void NanonWindow::resizeEvent(QResizeEvent *ev)
-{
-    // hacky work around for monospace being lost on window change.
-    setMonospaced(outputWindow);
-    setMonospaced(editor);
-}
-
 
 void NanonWindow::setInterpreter(NanonInterpreterBase* interpreter)
 {
@@ -296,10 +318,11 @@ void NanonWindow::setInterpreter(NanonInterpreterBase* interpreter)
 Highlighter::Highlighter(QTextDocument *parent)
     : QSyntaxHighlighter(parent)
 {
-    // QString file = "C:\\dev\\559Nanon\\pip-requirements.tmLanguage.json";
-    // QString file = "C:\\dev\\559Nanon\\Python.tmLanguage";
-    QString syntaxPath = SYNTAX_PATH;
-    QString file = syntaxPath + "TestPython.tmLanguage.json";
+
+    std::filesystem::path resourcePath = RESOURCE_PATH;
+    std::filesystem::path grammarFile = resourcePath / "syntaxes" / "TestPython.tmLanguage.json";
+    //std::filesystem::path grammarFile = resourcePath / "syntaxes" / "Python.tmLanguage";
+    QString file = grammarFile.string().c_str();
 
     this->setSyntaxFromFile(file);
 
@@ -354,6 +377,25 @@ void Highlighter::highlightBlock(const QString &text)
 }
 
 
+QVector<QString> Highlighter::scopesAtPosition(const QString &text, int pos)
+{
+    // Ensure engine is in correct state for this line
+    auto regions = m_engine->scanLine(text);
+
+    QVector<QString> scopes;
+
+    for (const auto& r : regions)
+    {
+        if (pos >= r.start && pos < r.start + r.length)
+        {
+            scopes.push_back(r.scope);
+        }
+    }
+
+    return scopes;
+}
+
+
 void Highlighter::setSyntaxFromFile(QString fileName)
 {
     TextMateParseError err;
@@ -372,10 +414,16 @@ void Highlighter::setSyntaxFromFile(QString fileName)
     QTextCharFormat keywordFormat;
     QTextCharFormat multiLineFormat;
     QTextCharFormat commentFormat;
+    QTextCharFormat stringFormat;
+    QTextCharFormat numberFormat;
+    QTextCharFormat variableFormat;;
 
     keywordFormat.setForeground(Qt::darkMagenta);
     multiLineFormat.setForeground(QColor(191, 255, 0, 255));
     commentFormat.setForeground(Qt::darkGreen);
+    stringFormat.setForeground(QColor(191, 255, 0, 255));
+    numberFormat.setForeground(Qt::darkCyan);
+    variableFormat.setForeground(Qt::lightGray);
 
     // super hardcoded atm lol.
     // this will eventually read from a json file.
@@ -390,7 +438,17 @@ void Highlighter::setSyntaxFromFile(QString fileName)
     formats["keyword.control.todo.example"] = keywordFormat;
 
     formats["comment.line.number-sign.python"] = commentFormat;
-    formats["string.quoted.single.python"] = multiLineFormat;
-    formats["string.quoted.double.python"] = multiLineFormat;
+    formats["string.quoted.single.python"] = stringFormat;
+    formats["string.quoted.double.python"] = stringFormat;
     formats["keyword.control.python"] = keywordFormat;
+    formats["constant.numeric.python"] = numberFormat;
+
+
+    formats["keyword.control.def.python"] = keywordFormat;
+    formats["entity.name.function.python"] = variableFormat;
+    formats["variable.parameter.function.python"] = variableFormat;
+
+    formats["punctuation.section.parameters.begin.python"] = keywordFormat;
+    formats["punctuation.section.parameters.end.python"] = keywordFormat;
+
 }

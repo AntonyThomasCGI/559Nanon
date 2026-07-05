@@ -27,7 +27,6 @@ public:
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
-    void keyPressEvent(QKeyEvent *event) override;
 
 private slots:
     void updateLineNumberAreaWidth(int newBlockCount);
@@ -77,6 +76,8 @@ class Highlighter : public QSyntaxHighlighter
 public:
     Highlighter(QTextDocument *parent = 0);
 
+    QVector<QString> scopesAtPosition(const QString &text, int pos);
+
 protected:
     void highlightBlock(const QString &text);
 
@@ -91,6 +92,7 @@ private:
     void setSyntaxFromFile(QString fileName);
 
     QMap<QString, QTextCharFormat> formats;
+
 
     ScopeBlockData* previousBlockUserData() const;
 
@@ -112,12 +114,9 @@ public:
 
     void setInterpreter(NanonInterpreterBase* interpreter);
 
-protected:
-    void resizeEvent(QResizeEvent *ev) override;
-
 private:
     void createStatusBar();
-    static void setMonospaced(QPlainTextEdit *textEdit);
+    //static void setMonospaced(QPlainTextEdit *textEdit);
 
 	QPlainTextEdit *outputWindow;
 
@@ -128,6 +127,7 @@ private:
     NanonInterpreterBase* m_interpreter = nullptr;
 
     void onRunCode();
+    void onShowScopesAtCursor();
 
     // QHBoxLayout    *layout;
     // QPlainTextEdit *outputWindow;

@@ -2,11 +2,10 @@
 #include "nanon.hpp"
 #include "interpreter/nanon_python.hpp"
 
+#include <QtWidgets/QApplication>
+
 #include <iostream>
 #include <string>
-
-
-#include <QtWidgets/QApplication>
 
 
 int main(int argc, char *argv[])
@@ -20,10 +19,12 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
     NanonWindow nanon;
+    nanon.resize(800, 600);
 
     nanon.setInterpreter(interpreter);
 
     nanon.show();
+
 
     return app.exec();
 }

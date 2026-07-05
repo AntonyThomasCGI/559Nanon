@@ -23,6 +23,7 @@ void Grammar::ingestGrammar(QMap<QString, QVariant> rawRule)
 
 void Grammar::_ingestGrammar(QMap<QString, QVariant> rawRule)
 {
+    // Populate repository
     if (rawRule.contains("repository"))
     {
         auto repo = rawRule["repository"].toMap();
@@ -35,8 +36,15 @@ void Grammar::_ingestGrammar(QMap<QString, QVariant> rawRule)
         }
     }
 
+    // Resolve the list of patterns
     _parsePatternArray(rawRule, root);
 
+    // Resolve includes
+    for (auto& rule : rules) {
+        if (auto include = dynamic_cast<IncludeRule*>(rule.get())) {
+            include->resolved = _resolveInclude(include->include);
+        }
+    }
 }
 
 void Grammar::_parsePatternArray(const QMap<QString, QVariant>& object, RuleGroup& currentGroup)
@@ -61,12 +69,11 @@ Rule* Grammar::_parseRule(const QMap<QString, QVariant>& raw, RuleGroup& current
 
     if (raw.contains("include"))
     {
-        RuleGroup* group = _resolveInclude(raw["include"].toString());
-        if (group) {
-            for (Rule* r : group->patterns) {
-                currentGroup.patterns.push_back(r);
-            }
-        }
+        QString include = raw["include"].toString();
+        auto ptr = std::make_unique<IncludeRule>(include, include);
+
+        rule = ptr.get();
+        rules.push_back(std::move(ptr));
     }
 
     if (raw.contains("match"))
