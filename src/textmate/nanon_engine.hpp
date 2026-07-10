@@ -15,6 +15,7 @@ struct Context
 {
     RuleGroup* group;
     BeginEndRule* activeRule = nullptr;
+    int beginPosition;
 };
 
 

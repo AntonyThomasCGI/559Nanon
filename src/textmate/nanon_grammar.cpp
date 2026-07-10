@@ -4,40 +4,48 @@
 #include <iostream>
 
 
-Grammar::Grammar(QString scopeName, QMap<QString, QVariant> rawRule)
+Grammar::Grammar(QString scopeName, QMap<QString, QVariant> rawGrammar)
 {
     this->scopeName = scopeName;
 
-    ingestGrammar(rawRule);
+    ingestGrammar(rawGrammar);
 }
 
 
 Grammar::~Grammar()
 {}
 
-void Grammar::ingestGrammar(QMap<QString, QVariant> rawRule)
+void Grammar::ingestGrammar(QMap<QString, QVariant> rawGrammar)
 {
-    _ingestGrammar(rawRule);
+    _ingestGrammar(rawGrammar);
 }
 
 
-void Grammar::_ingestGrammar(QMap<QString, QVariant> rawRule)
+void Grammar::_ingestGrammar(QMap<QString, QVariant> rawGrammar)
 {
     // Populate repository
-    if (rawRule.contains("repository"))
+    if (rawGrammar.contains("repository"))
     {
-        auto repo = rawRule["repository"].toMap();
+        auto repo = rawGrammar["repository"].toMap();
 
         for (auto it = repo.begin(); it != repo.end(); ++it)
         {
+            QMap<QString, QVariant> rawRule = it.value().toMap();
             RuleGroup& group = repository[it.key()];
 
-            _parsePatternArray(it.value().toMap(), group);
+            if (rawRule.contains("begin")) {
+                Rule *rule = _parseRule(rawRule);
+                group.patterns.push_back(rule);
+            } else {
+                // Assume pattern array
+                _parsePatternArray(it.value().toMap(), group);
+            }
+
         }
     }
 
     // Resolve the list of patterns
-    _parsePatternArray(rawRule, root);
+    _parsePatternArray(rawGrammar, root);
 
     // Resolve includes
     for (auto& rule : rules) {
@@ -45,25 +53,26 @@ void Grammar::_ingestGrammar(QMap<QString, QVariant> rawRule)
             include->resolved = _resolveInclude(include->include);
         }
     }
+    std::cout << "done" << std::endl;
 }
 
-void Grammar::_parsePatternArray(const QMap<QString, QVariant>& object, RuleGroup& currentGroup)
+void Grammar::_parsePatternArray(const QMap<QString, QVariant>& rawRule, RuleGroup& currentGroup)
 {
-    if (!object.contains("patterns")) {
+    if (!rawRule.contains("patterns")) {
         return;
     }
 
-    auto list = object["patterns"].toList();
+    auto patternList = rawRule["patterns"].toList();
 
-    for (const QVariant& value : list)
+    for (const QVariant& value : patternList)
     {
-        Rule* rule = _parseRule(value.toMap(), currentGroup);
+        Rule* rule = _parseRule(value.toMap());
         currentGroup.patterns.push_back(rule);
     }
 }
 
 
-Rule* Grammar::_parseRule(const QMap<QString, QVariant>& raw, RuleGroup& currentGroup)
+Rule* Grammar::_parseRule(const QMap<QString, QVariant>& raw)
 {
     Rule* rule = nullptr;
 
@@ -87,8 +96,9 @@ Rule* Grammar::_parseRule(const QMap<QString, QVariant>& raw, RuleGroup& current
     }
     else if (raw.contains("begin"))
     {
+        QString name = raw.contains("name") ? raw["name"].toString() : "";
         auto ptr = std::make_unique<BeginEndRule>(
-            raw["name"].toString(),
+            name,
             raw["begin"].toString(),
             raw["end"].toString());
 
@@ -117,12 +127,12 @@ Rule* Grammar::_parseRule(const QMap<QString, QVariant>& raw, RuleGroup& current
             }
         }
 
+        // Parse nested patterns belonging to this BeginEndRule.
+        _parsePatternArray(raw, ptr->children);
+
         rule = ptr.get();
         rules.push_back(std::move(ptr));
 
-        // Parse nested patterns belonging to this BeginEndRule.
-        _parsePatternArray(raw,
-            static_cast<BeginEndRule*>(rule)->children);
     }
 
     return rule;

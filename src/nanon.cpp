@@ -39,6 +39,22 @@ NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
     highlightCurrentLine();
 }
 
+
+void NanonEditor::keyPressEvent(QKeyEvent *event)
+{
+    // Explicitly handle Shift/Meta + Enter so that a new textBlock is inserted.
+    if (event->key() == Qt::Key_Return ||
+        event->key() == Qt::Key_Enter) {
+            if (event->modifiers() & Qt::MetaModifier || event->modifiers() & Qt::ShiftModifier) {
+                textCursor().insertBlock();
+                return;
+            }
+    }
+
+    QPlainTextEdit::keyPressEvent(event);
+}
+
+
 int NanonEditor::lineNumberAreaWidth()
 {
     int digits = 1;
@@ -56,10 +72,12 @@ int NanonEditor::lineNumberAreaWidth()
     return space;
 }
 
-void NanonEditor::updateLineNumberAreaWidth(int /* newBlockCount */)
+void NanonEditor::updateLineNumberAreaWidth(int newBlockCount)
 {
+
     setViewportMargins(lineNumberAreaWidth(), 0, 0, 0);
 }
+
 
 void NanonEditor::resizeEvent(QResizeEvent *e)
 {
@@ -71,13 +89,15 @@ void NanonEditor::resizeEvent(QResizeEvent *e)
 
 void NanonEditor::updateLineNumberArea(const QRect &rect, int dy)
 {
-    if (dy)
+    if (dy) {
         lineNumberArea->scroll(0, dy);
-    else
+    } else {
         lineNumberArea->update(0, rect.y(), lineNumberArea->width(), rect.height());
+    }
 
-    if (rect.contains(viewport()->rect()))
+    if (rect.contains(viewport()->rect())) {
         updateLineNumberAreaWidth(0);
+    }
 }
 
 void NanonEditor::highlightCurrentLine()
@@ -217,6 +237,10 @@ NanonWindow::NanonWindow(QWidget* parent)
 
     QString tempText = R""""(# Welcome to 559 Nanon!
 
+import functools
+from collections import OrderedDict
+
+
 print('this is a test')
 
 
@@ -238,6 +262,12 @@ else:
     pass
 
 
+)"""";
+    //tempText = "print('this test', why=True)";
+
+    //tempText = "print('this test', why=True)";
+    tempText = R""""(import functools
+functools.partial(print, "a test print example")
 )"""";
 
     editor->setPlainText(tempText);
@@ -280,10 +310,13 @@ void NanonWindow::onShowScopesAtCursor()
 
     QVector<QString> scopes = highlighter->scopesAtPosition(currentBlock.text(), cursorPosition);
 
+    std::cout << std::to_string(scopes.length()) << std::endl;
+
     const QPoint cursorCoordinates = editor->cursorRect().bottomRight();
     QMenu menu("Scopes", this);
     bool hasScope = false;
-    for (auto & scope : scopes) {
+    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
+        QString scope = *it;
         menu.addAction(scope);
         hasScope = true;
         // std::cout << qUtf8Printable(scope.name) << " " << std::to_string(scope.startIndex) << " " << std::to_string(scope.endIndex) << std::endl;
@@ -291,6 +324,7 @@ void NanonWindow::onShowScopesAtCursor()
     if (!hasScope) {
         menu.addAction("Not in a scope");
     }
+    menu.setStyleSheet("background-color:white;color:black;");
     menu.exec(editor->viewport()->mapToGlobal(cursorCoordinates));
 }
 
@@ -320,8 +354,8 @@ Highlighter::Highlighter(QTextDocument *parent)
 {
 
     std::filesystem::path resourcePath = RESOURCE_PATH;
-    std::filesystem::path grammarFile = resourcePath / "syntaxes" / "TestPython.tmLanguage.json";
-    //std::filesystem::path grammarFile = resourcePath / "syntaxes" / "Python.tmLanguage";
+    //std::filesystem::path grammarFile = resourcePath / "syntaxes" / "TestPython.tmLanguage.json";
+    std::filesystem::path grammarFile = resourcePath / "syntaxes" / "TestPython2.tmLanguage.json";
     QString file = grammarFile.string().c_str();
 
     this->setSyntaxFromFile(file);

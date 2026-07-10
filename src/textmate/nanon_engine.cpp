@@ -6,7 +6,7 @@
 
 TextMateEngine::TextMateEngine(RuleGroup* root)
 {
-    stack.push_back({root, nullptr});
+    stack.push_back({root, nullptr, -1});
 }
 
 
@@ -17,28 +17,28 @@ std::vector<Region> TextMateEngine::scanLine(const QString& text)
 
     int pos = 0;
 
-    while (pos < text.size())
+    std::cout << "Test size is " << std::to_string(text.size()) << std::endl;
+
+    while (pos <= text.size())
     {
         Context& ctx = stack.back();
 
         // STEP 1: END RULE HAS PRIORITY
-        if (ctx.activeRule)
+        if (ctx.activeRule != nullptr)
         {
-            auto match = ctx.activeRule->end.match(
-                text,
-                pos,
-                QRegularExpression::NormalMatch,
-                QRegularExpression::AnchorAtOffsetMatchOption
-            );
+            //auto match = ctx.activeRule->end.match(
+            //    text,
+            //    pos,
+            //    QRegularExpression::NormalMatch
+            //    //QRegularExpression::AnchorAtOffsetMatchOption
+            //);
 
-            if (match.hasMatch())
+            std::cout << "trying to match: '" << text.toStdString() << " at pos " << std::to_string(pos) << std::endl;
+
+            auto match = ctx.activeRule->end.match(text, pos);
+
+            if (match.hasMatch() && match.capturedStart() == pos)
             {
-                regions.push_back({
-                    ctx.activeRule->name,
-                    pos,
-                    match.capturedLength()
-                });
-
                 for (Capture& cap : ctx.activeRule->endCaptures) {
                     int start = match.capturedStart(cap.group);
                     int length = match.capturedLength(cap.group);
@@ -52,44 +52,64 @@ std::vector<Region> TextMateEngine::scanLine(const QString& text)
                     }
                 }
 
-                pos += match.capturedLength();
+                if (!ctx.activeRule->name.isEmpty()) {
+
+                    regions.push_back({
+                        ctx.activeRule->name,
+                        ctx.beginPosition,
+                        pos + match.capturedLength() - ctx.beginPosition
+                    });
+                }
+
+                //pos += match.capturedLength();
                 stack.pop_back();
                 continue;
             }
         }
 
-        // STEP 2: TRY PATTERNS IN CURRENT GROUP
         bool matched = false;
 
-        for (Rule* rule : ctx.group->patterns)
-        {
-            // INCLUDE RULE
-            if (auto* i = dynamic_cast<IncludeRule*>(rule))
+        // STEP 2: TRY PATTERNS IN CURRENT GROUP
+        if (ctx.group != nullptr) {
+            for (Rule* rule : ctx.group->patterns)
             {
-                if (i->resolved)
+                // INCLUDE RULE
+                if (auto* i = dynamic_cast<IncludeRule*>(rule))
                 {
-                    for (Rule* r : i->resolved->patterns)
+                    if (i->resolved)
                     {
-                        matched |= applyRule(r, text, pos, regions);
+                        for (Rule* r : i->resolved->patterns)
+                        {
+                            if (applyRule(r, text, pos, regions)) {
+                                matched = true;
+                                break;
+                            }
+                        }
                     }
+                } else {
+                    matched = applyRule(rule, text, pos, regions);
                 }
-            } else {
-                matched = applyRule(rule, text, pos, regions);
             }
         }
+
+        // Add region for each active rule in stack
+        //for (auto &item : stack) {
+        //    if (item.activeRule != nullptr &&
+        //        item.beginPosition != -1 &&
+        //        !item.activeRule->name.isEmpty())
+        //    {
+        //            std::cout << "add scope " << item.activeRule->name.toStdString() << std::endl;
+        //            regions.push_back({
+        //                item.activeRule->name,
+        //                ctx.beginPosition,
+        //                pos
+        //            });
+        //    }
+        //}
 
         // STEP 3: FALLBACK (consume 1 char)
         if (!matched)
         {
-            // This is a simplistic way to handle the inherited scope
-            if (ctx.activeRule) {
-                regions.push_back({
-                    ctx.activeRule->name,
-                    pos,
-                    1
-                });
-            }
-
             pos++;
         }
     }
@@ -119,6 +139,7 @@ bool TextMateEngine::applyRule(Rule* rule, const QString& text, int& pos, std::v
             });
 
             pos += match.capturedLength();
+
             return true;
         }
     }
@@ -136,19 +157,26 @@ bool TextMateEngine::applyRule(Rule* rule, const QString& text, int& pos, std::v
 
         if (match.hasMatch())
         {
-            regions.push_back({
-                b->name,
-                pos,
-                match.capturedLength()
-            });
-
-            pos += match.capturedLength();
+            std::cout << "matched begin: ";
+            // Not all begin/end rules have a name key. If they do though, push a region.
+            //if (!b->name.isEmpty()) {
+            //    regions.push_back({
+            //        b->name,
+            //        pos,
+            //        match.capturedLength()
+            //    });
+            //    std::cout << b->name.toStdString();
+            //}
+            //std::cout << " at pos: " << std::to_string(pos) << std::endl;
 
             // PUSH CONTEXT
             stack.push_back({
                 &b->children,
-                b
+                b,
+                pos
             });
+
+            pos += match.capturedLength();
 
             for (Capture& cap : b->beginCaptures) {
                 int start = match.capturedStart(cap.group);
