@@ -77,7 +77,7 @@ class Highlighter : public QSyntaxHighlighter
 public:
     Highlighter(QTextDocument *parent = 0);
 
-    QVector<QString> scopesAtPosition(const QString &text, int pos);
+    QVector<QString> scopesAtPosition(const QTextBlock &currentBlock, int pos);
 
 protected:
     void highlightBlock(const QString &text);

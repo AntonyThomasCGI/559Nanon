@@ -238,10 +238,18 @@ NanonWindow::NanonWindow(QWidget* parent)
     QString tempText = R""""(# Welcome to 559 Nanon!
 
 import functools
-from collections import OrderedDict
+from contextlib import contextmanager
 
 
-print('this is a test')
+print('this is a \'great\' test')
+
+
+@contextmanager
+def test_manager(resource):
+    try:
+        yield "Hi"
+    finally:
+        print('cleanup')
 
 
 def fn(a, b, limit=10, count=0):
@@ -253,6 +261,9 @@ def fn(a, b, limit=10, count=0):
     print(f"{c} (iteration={count + 1})")
     fn(b, c, limit=limit, count=count + 1)
 
+
+with test_manager(None):
+    pass
 
 fn(0, 1)
 
@@ -266,9 +277,9 @@ else:
     //tempText = "print('this test', why=True)";
 
     //tempText = "print('this test', why=True)";
-    tempText = R""""(import functools
-functools.partial(print, "a test print example")
-)"""";
+//    tempText = R""""(import functools
+//functools.partial(print, "a test \"print\" example")
+//)"""";
 
     editor->setPlainText(tempText);
 
@@ -308,15 +319,14 @@ void NanonWindow::onShowScopesAtCursor()
 
     int cursorPosition = cursor.positionInBlock();
 
-    QVector<QString> scopes = highlighter->scopesAtPosition(currentBlock.text(), cursorPosition);
+    QVector<QString> scopes = highlighter->scopesAtPosition(currentBlock, cursorPosition);
 
     std::cout << std::to_string(scopes.length()) << std::endl;
 
     const QPoint cursorCoordinates = editor->cursorRect().bottomRight();
     QMenu menu("Scopes", this);
     bool hasScope = false;
-    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
-        QString scope = *it;
+    for (auto &scope : scopes) {
         menu.addAction(scope);
         hasScope = true;
         // std::cout << qUtf8Printable(scope.name) << " " << std::to_string(scope.startIndex) << " " << std::to_string(scope.endIndex) << std::endl;
@@ -391,7 +401,7 @@ void Highlighter::highlightBlock(const QString &text)
         m_engine->stack.push_back({&m_grammar->root, nullptr});
     }
 
-    auto regions = m_engine->scanLine(text);
+    std::vector<Region> regions = m_engine->scanLine(text);
     //std::cout << "regions for block " << std::to_string(block) << std::endl;
     //for (auto& region : regions) {
     //    std::cout << region.scope.toStdString() << " " << std::to_string(region.start) << " " << std::to_string(region.length) << std::endl;
@@ -401,8 +411,9 @@ void Highlighter::highlightBlock(const QString &text)
     m_stateCache[block] = state;
     setCurrentBlockState(block);
 
-    for (auto& region : regions)
+    for (auto it = regions.rbegin(); it < regions.rend(); ++it)
     {
+        Region region = *it;
         if (formats.contains(region.scope)) {
             // Set highlighting.
             setFormat(region.start, region.length, formats.value(region.scope));
@@ -411,8 +422,19 @@ void Highlighter::highlightBlock(const QString &text)
 }
 
 
-QVector<QString> Highlighter::scopesAtPosition(const QString &text, int pos)
+QVector<QString> Highlighter::scopesAtPosition(const QTextBlock &currentBlock, int pos)
 {
+    int blockNum = currentBlock.blockNumber();
+
+    if (m_stateCache.contains(blockNum - 1)) {
+        m_engine->stack = m_stateCache[blockNum - 1].stack;
+    } else {
+        m_engine->stack.clear();
+        m_engine->stack.push_back({&m_grammar->root, nullptr});
+    }
+
+    const QString text = currentBlock.text();
+
     // Ensure engine is in correct state for this line
     auto regions = m_engine->scanLine(text);
 
@@ -450,7 +472,8 @@ void Highlighter::setSyntaxFromFile(QString fileName)
     QTextCharFormat commentFormat;
     QTextCharFormat stringFormat;
     QTextCharFormat numberFormat;
-    QTextCharFormat variableFormat;;
+    QTextCharFormat variableFormat;
+    QTextCharFormat escapeFormat;
 
     keywordFormat.setForeground(Qt::darkMagenta);
     multiLineFormat.setForeground(QColor(191, 255, 0, 255));
@@ -458,6 +481,7 @@ void Highlighter::setSyntaxFromFile(QString fileName)
     stringFormat.setForeground(QColor(191, 255, 0, 255));
     numberFormat.setForeground(Qt::darkCyan);
     variableFormat.setForeground(Qt::lightGray);
+    escapeFormat.setForeground(Qt::darkRed);
 
     // super hardcoded atm lol.
     // this will eventually read from a json file.
@@ -484,5 +508,11 @@ void Highlighter::setSyntaxFromFile(QString fileName)
 
     formats["punctuation.section.parameters.begin.python"] = keywordFormat;
     formats["punctuation.section.parameters.end.python"] = keywordFormat;
+
+    formats["keyword.control.import.python"] = keywordFormat;
+
+    formats["constant.character.escape.python"] = escapeFormat;
+
+    formats["meta.decorator.python"] = numberFormat;
 
 }

@@ -17,8 +17,6 @@ std::vector<Region> TextMateEngine::scanLine(const QString& text)
 
     int pos = 0;
 
-    std::cout << "Test size is " << std::to_string(text.size()) << std::endl;
-
     while (pos <= text.size())
     {
         Context& ctx = stack.back();
@@ -32,8 +30,6 @@ std::vector<Region> TextMateEngine::scanLine(const QString& text)
             //    QRegularExpression::NormalMatch
             //    //QRegularExpression::AnchorAtOffsetMatchOption
             //);
-
-            std::cout << "trying to match: '" << text.toStdString() << " at pos " << std::to_string(pos) << std::endl;
 
             auto match = ctx.activeRule->end.match(text, pos);
 
@@ -61,7 +57,7 @@ std::vector<Region> TextMateEngine::scanLine(const QString& text)
                     });
                 }
 
-                //pos += match.capturedLength();
+                pos += match.capturedLength();
                 stack.pop_back();
                 continue;
             }
@@ -157,7 +153,6 @@ bool TextMateEngine::applyRule(Rule* rule, const QString& text, int& pos, std::v
 
         if (match.hasMatch())
         {
-            std::cout << "matched begin: ";
             // Not all begin/end rules have a name key. If they do though, push a region.
             //if (!b->name.isEmpty()) {
             //    regions.push_back({
