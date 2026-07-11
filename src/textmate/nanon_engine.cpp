@@ -6,12 +6,31 @@
 
 TextMateEngine::TextMateEngine(RuleGroup* root)
 {
-    stack.push_back({root, nullptr, -1});
+    stack.push_back({root});
 }
 
 
-std::vector<Region> TextMateEngine::scanLine(const QString& text)
+void pushRegion(QString &name, int start, int length, std::vector<Region> &regions)
 {
+    if (name.isEmpty()) {
+        return;
+    }
+    QStringList tokens = name.split(" ");
+    for (auto it = tokens.crbegin(); it < tokens.crend(); ++it) {
+        regions.push_back({
+            *it,
+            start,
+            length
+        });
+    }
+}
+
+
+std::vector<Region> TextMateEngine::scanLine(const QString& inputText)
+{
+
+    // TODO, idk what the interaction is with "$" matches now
+    const QString text = inputText + "\n";
 
     std::vector<Region> regions;
 
@@ -22,40 +41,25 @@ std::vector<Region> TextMateEngine::scanLine(const QString& text)
         Context& ctx = stack.back();
 
         // STEP 1: END RULE HAS PRIORITY
-        if (ctx.activeRule != nullptr)
+        if (ctx.beginEndRule != nullptr)
         {
-            //auto match = ctx.activeRule->end.match(
-            //    text,
-            //    pos,
-            //    QRegularExpression::NormalMatch
-            //    //QRegularExpression::AnchorAtOffsetMatchOption
-            //);
-
-            auto match = ctx.activeRule->end.match(text, pos);
+            auto match = ctx.endRegex.match(text, pos);
 
             if (match.hasMatch() && match.capturedStart() == pos)
             {
-                for (Capture& cap : ctx.activeRule->endCaptures) {
+                for (Capture& cap : ctx.beginEndRule->endCaptures) {
                     int start = match.capturedStart(cap.group);
                     int length = match.capturedLength(cap.group);
 
                     if (start >= 0) {
-                        regions.push_back({
-                            cap.name,
-                            start,
-                            length
-                        });
+                        pushRegion(cap.name, start, length, regions);
                     }
                 }
 
-                if (!ctx.activeRule->name.isEmpty()) {
-
-                    regions.push_back({
-                        ctx.activeRule->name,
-                        ctx.beginPosition,
-                        pos + match.capturedLength() - ctx.beginPosition
-                    });
-                }
+                pushRegion(ctx.beginEndRule->name,
+                           ctx.beginMatch.capturedStart(),
+                           pos + match.capturedLength() - ctx.beginMatch.capturedStart(),
+                           regions);
 
                 pos += match.capturedLength();
                 stack.pop_back();
@@ -69,39 +73,13 @@ std::vector<Region> TextMateEngine::scanLine(const QString& text)
         if (ctx.group != nullptr) {
             for (Rule* rule : ctx.group->patterns)
             {
-                // INCLUDE RULE
-                if (auto* i = dynamic_cast<IncludeRule*>(rule))
-                {
-                    if (i->resolved)
-                    {
-                        for (Rule* r : i->resolved->patterns)
-                        {
-                            if (applyRule(r, text, pos, regions)) {
-                                matched = true;
-                                break;
-                            }
-                        }
-                    }
-                } else {
-                    matched = applyRule(rule, text, pos, regions);
+                std::unordered_set<const RuleGroup*> visited;
+                if (applyRule(rule, text, pos, regions, visited)) {
+                    matched = true;
+                    break;
                 }
             }
         }
-
-        // Add region for each active rule in stack
-        //for (auto &item : stack) {
-        //    if (item.activeRule != nullptr &&
-        //        item.beginPosition != -1 &&
-        //        !item.activeRule->name.isEmpty())
-        //    {
-        //            std::cout << "add scope " << item.activeRule->name.toStdString() << std::endl;
-        //            regions.push_back({
-        //                item.activeRule->name,
-        //                ctx.beginPosition,
-        //                pos
-        //            });
-        //    }
-        //}
 
         // STEP 3: FALLBACK (consume 1 char)
         if (!matched)
@@ -110,12 +88,49 @@ std::vector<Region> TextMateEngine::scanLine(const QString& text)
         }
     }
 
+    // Emit regions for any contexts that are still active
+    for (auto &ctx : stack) {
+        if (ctx.beginEndRule && !ctx.beginEndRule->name.isEmpty()) {
+
+            pushRegion(ctx.beginEndRule->name,
+                       ctx.beginMatch.capturedStart(),
+                       pos,
+                       regions);
+        }
+    }
+
     return regions;
 }
 
 
-bool TextMateEngine::applyRule(Rule* rule, const QString& text, int& pos, std::vector<Region>& regions)
+bool TextMateEngine::applyRule(
+    Rule* rule,
+    const QString& text,
+    int& pos,
+    std::vector<Region>& regions,
+    std::unordered_set<const RuleGroup*> &visited)
 {
+    // INCLUDE RULE
+    if (auto* i = dynamic_cast<IncludeRule*>(rule))
+    {
+        if (!i->resolved) {
+            return false;
+        }
+
+        // Already expanded this RuleGroup?
+        if (!visited.insert(i->resolved).second) {
+            return false;
+        }
+
+        for (Rule* child : i->resolved->patterns)
+        {
+            if (applyRule(child, text, pos, regions, visited)) {
+                visited.erase(i->resolved);
+                return true;
+            }
+        }
+    }
+
     // MATCH RULE
     if (auto* m = dynamic_cast<MatchRule*>(rule))
     {
@@ -128,11 +143,24 @@ bool TextMateEngine::applyRule(Rule* rule, const QString& text, int& pos, std::v
 
         if (match.hasMatch())
         {
-            regions.push_back({
-                m->name,
-                pos,
-                match.capturedLength()
-            });
+            // Apply match region
+            pushRegion(m->name,
+                       pos,
+                       match.capturedLength(),
+                       regions);
+
+            // Apply match captures
+            for (Capture& cap : m->captures) {
+                int start = match.capturedStart(cap.group);
+                int length = match.capturedLength(cap.group);
+
+                if (start >= 0 && !cap.name.isEmpty()) {
+                    pushRegion(cap.name,
+                               start,
+                               length,
+                               regions);
+                }
+            }
 
             pos += match.capturedLength();
 
@@ -153,23 +181,22 @@ bool TextMateEngine::applyRule(Rule* rule, const QString& text, int& pos, std::v
 
         if (match.hasMatch())
         {
-            // Not all begin/end rules have a name key. If they do though, push a region.
-            //if (!b->name.isEmpty()) {
-            //    regions.push_back({
-            //        b->name,
-            //        pos,
-            //        match.capturedLength()
-            //    });
-            //    std::cout << b->name.toStdString();
-            //}
-            //std::cout << " at pos: " << std::to_string(pos) << std::endl;
+            // Construct the end regex by substituting capture groups
+            QString endRegex = b->end;
+            for (int i = 0; i <= match.lastCapturedIndex(); ++i) {
+                endRegex.replace(
+                    "\\" + QString::number(i),
+                    QRegularExpression::escape(match.captured(i))
+                );
+            }
 
-            // PUSH CONTEXT
-            stack.push_back({
-                &b->children,
-                b,
-                pos
-            });
+            // Push the new context
+            Context ctx;
+            ctx.group = &b->children;
+            ctx.beginEndRule = b;
+            ctx.beginMatch = match;
+            ctx.endRegex = QRegularExpression(endRegex);
+            stack.push_back(ctx);
 
             pos += match.capturedLength();
 
@@ -178,11 +205,10 @@ bool TextMateEngine::applyRule(Rule* rule, const QString& text, int& pos, std::v
                 int length = match.capturedLength(cap.group);
 
                 if (start >= 0) {
-                    regions.push_back({
-                        cap.name,
-                        start,
-                        length
-                    });
+                    pushRegion(cap.name,
+                               start,
+                               length,
+                               regions);
                 }
             }
 

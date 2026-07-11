@@ -34,18 +34,22 @@ public:
 };
 
 
+// TODO, captures can have patterns. But this seems obscurely
+// used in most grammar files I've looked at
+struct Capture {
+    int group;
+    QString name;
+};
+
+
 class MatchRule : public Rule
 {
 public:
     MatchRule(QString name, QString pattern);
 
+    std::vector<Capture> captures;
+
     QRegularExpression regex;
-};
-
-
-struct Capture {
-    int group;
-    QString name;
 };
 
 
@@ -57,7 +61,7 @@ public:
     BeginEndRule(QString name, QString begin, QString end);
 
     QRegularExpression begin;
-    QRegularExpression end;
+    QString end;
 
     std::vector<Capture> beginCaptures;
     std::vector<Capture> endCaptures;

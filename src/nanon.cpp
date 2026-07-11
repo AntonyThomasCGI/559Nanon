@@ -241,6 +241,11 @@ import functools
 from contextlib import contextmanager
 
 
+class CoolClass:
+    def __init__(self, x):
+        self.x = x
+
+
 print('this is a \'great\' test')
 
 
@@ -253,7 +258,12 @@ def test_manager(resource):
 
 
 def fn(a, b, limit=10, count=0):
-    """This is an example fibonachi function."""
+    """This is an example fibonacci function.
+
+    Args:
+        a (int): A number.
+        b (int): B number.
+    """
     if count >= limit:
         return
 
@@ -267,14 +277,29 @@ with test_manager(None):
 
 fn(0, 1)
 
-if True:
-    pass
-else:
-    pass
+i = 5
+while i <= 10:
+    i += 1
+
+
+CONSTANT = True
+
+
 
 
 )"""";
-    //tempText = "print('this test', why=True)";
+
+//    tempText = R""""(import functools
+//from contextlib import contextmanager
+//
+//
+//class CoolClass:
+//    def __init__(self, x):
+//        self.x = x
+//)"""";
+
+
+    //tempText = "from contextlib import ...";
 
     //tempText = "print('this test', why=True)";
 //    tempText = R""""(import functools
@@ -364,8 +389,8 @@ Highlighter::Highlighter(QTextDocument *parent)
 {
 
     std::filesystem::path resourcePath = RESOURCE_PATH;
-    //std::filesystem::path grammarFile = resourcePath / "syntaxes" / "TestPython.tmLanguage.json";
-    std::filesystem::path grammarFile = resourcePath / "syntaxes" / "TestPython2.tmLanguage.json";
+    std::filesystem::path grammarFile = resourcePath / "syntaxes" / "MagicPython.tmLanguage.json";
+    //std::filesystem::path grammarFile = resourcePath / "syntaxes" / "TestPython4.tmLanguage.json";
     QString file = grammarFile.string().c_str();
 
     this->setSyntaxFromFile(file);
@@ -472,16 +497,18 @@ void Highlighter::setSyntaxFromFile(QString fileName)
     QTextCharFormat commentFormat;
     QTextCharFormat stringFormat;
     QTextCharFormat numberFormat;
+    QTextCharFormat specialFormat;
     QTextCharFormat variableFormat;
     QTextCharFormat escapeFormat;
 
     keywordFormat.setForeground(Qt::darkMagenta);
     multiLineFormat.setForeground(QColor(191, 255, 0, 255));
     commentFormat.setForeground(Qt::darkGreen);
-    stringFormat.setForeground(QColor(191, 255, 0, 255));
-    numberFormat.setForeground(Qt::darkCyan);
+    stringFormat.setForeground(Qt::darkCyan);
+    specialFormat.setForeground(QColor(191, 255, 0, 255));
     variableFormat.setForeground(Qt::lightGray);
     escapeFormat.setForeground(Qt::darkRed);
+    numberFormat.setForeground(QColor(255, 0, 128, 255));
 
     // super hardcoded atm lol.
     // this will eventually read from a json file.
@@ -510,9 +537,15 @@ void Highlighter::setSyntaxFromFile(QString fileName)
     formats["punctuation.section.parameters.end.python"] = keywordFormat;
 
     formats["keyword.control.import.python"] = keywordFormat;
+    formats["keyword.control.flow.python"] = keywordFormat;
 
     formats["constant.character.escape.python"] = escapeFormat;
 
-    formats["meta.decorator.python"] = numberFormat;
+    formats["meta.function.decorator.python"] = specialFormat;
 
+    formats["string.quoted.docstring.multi.python"] = stringFormat;
+
+    formats["constant.numeric.dec.python"] = numberFormat;
+
+    formats["storage.type.class.python"] = keywordFormat;
 }

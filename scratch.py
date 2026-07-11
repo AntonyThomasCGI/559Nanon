@@ -1,6 +1,23 @@
+# Welcome to 559 Nanon!
+
+import functools
+from contextlib import contextmanager
 
 
-print('this is a test')
+class CoolClass:
+    def __init__(self, x):
+        self.x = x
+
+
+print('this is a \'great\' test')
+
+
+@contextmanager
+def test_manager(resource):
+    try:
+        yield "Hi"
+    finally:
+        print('cleanup')
 
 
 def fn(a, b, limit=10, count=0):
@@ -13,12 +30,17 @@ def fn(a, b, limit=10, count=0):
     fn(b, c, limit=limit, count=count + 1)
 
 
+with test_manager(None):
+    pass
+
 fn(0, 1)
 
+i = 5
+while i <= 10:
+    i += 1
 
-if True:
-    pass
-else:
-    pass
+
+CONSTANT = True
+
 
 

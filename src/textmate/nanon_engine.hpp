@@ -4,18 +4,27 @@
 #include "nanon_rule.hpp"
 
 #include <QtCore/QString>
+#include <QtCore/QRegularExpressionMatch>
 
 #include <vector>
 
 
 /**
- * Context represents the current state of the engine as it scans through a line of text.
+ * Context represents a single begin/end rule or grammar rule group.
  */
 struct Context
 {
+    // The group of rules to apply for this context
     RuleGroup* group;
-    BeginEndRule* activeRule = nullptr;
-    int beginPosition;
+
+    // The begin/end rule that is active for this context
+    BeginEndRule* beginEndRule = nullptr;
+
+    // The match result for the begining of this context
+    QRegularExpressionMatch beginMatch;
+
+    // The compiled end regex with substituted captures from the begin match
+    QRegularExpression endRegex;
 };
 
 
@@ -35,8 +44,13 @@ public:
     TextMateEngine(RuleGroup* root);
     virtual ~TextMateEngine() = default;
 
-    std::vector<Region> scanLine(const QString& text);
-    bool applyRule(Rule* rule, const QString& text, int& pos, std::vector<Region>& regions);
+    std::vector<Region> scanLine(const QString& inputText);
+    bool applyRule(
+        Rule* rule,
+        const QString& text,
+        int& pos,
+        std::vector<Region>& regions,
+        std::unordered_set<const RuleGroup*> &visited);
 
     std::vector<Context> stack;
 };

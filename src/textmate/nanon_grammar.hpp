@@ -31,7 +31,7 @@ public:
 private:
     void _ingestGrammar(QMap<QString, QVariant> rawGrammar);
     void _parsePatternArray(const QMap<QString, QVariant>& rawRule, RuleGroup& currentGroup);
-    Rule* _parseRule(const QMap<QString, QVariant>& raw);
+    Rule* _parseRule(const QMap<QString, QVariant>& rawRule);
 
     RuleGroup* _resolveInclude(const QString& include);
 };

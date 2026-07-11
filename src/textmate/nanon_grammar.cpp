@@ -33,14 +33,12 @@ void Grammar::_ingestGrammar(QMap<QString, QVariant> rawGrammar)
             QMap<QString, QVariant> rawRule = it.value().toMap();
             RuleGroup& group = repository[it.key()];
 
-            if (rawRule.contains("begin")) {
-                Rule *rule = _parseRule(rawRule);
+            Rule *rule = _parseRule(rawRule);
+            if (rule != nullptr) {
                 group.patterns.push_back(rule);
             } else {
-                // Assume pattern array
                 _parsePatternArray(it.value().toMap(), group);
             }
-
         }
     }
 
@@ -64,48 +62,58 @@ void Grammar::_parsePatternArray(const QMap<QString, QVariant>& rawRule, RuleGro
 
     auto patternList = rawRule["patterns"].toList();
 
-    for (const QVariant& value : patternList)
+    for (const QVariant& pattern : patternList)
     {
-        Rule* rule = _parseRule(value.toMap());
+        Rule* rule = _parseRule(pattern.toMap());
         currentGroup.patterns.push_back(rule);
     }
 }
 
 
-Rule* Grammar::_parseRule(const QMap<QString, QVariant>& raw)
+Rule* Grammar::_parseRule(const QMap<QString, QVariant>& rawRule)
 {
     Rule* rule = nullptr;
 
-    if (raw.contains("include"))
+    if (rawRule.contains("include"))
     {
-        QString include = raw["include"].toString();
+        QString include = rawRule["include"].toString();
         auto ptr = std::make_unique<IncludeRule>(include, include);
 
         rule = ptr.get();
         rules.push_back(std::move(ptr));
     }
 
-    if (raw.contains("match"))
+    if (rawRule.contains("match"))
     {
         auto ptr = std::make_unique<MatchRule>(
-            raw["name"].toString(),
-            raw["match"].toString());
+            rawRule["name"].toString(),
+            rawRule["match"].toString());
+
+        if (rawRule.contains("captures")) {
+            QMap<QString, QVariant> captures = rawRule["captures"].toMap();
+            for (auto capIt = captures.begin(); capIt != captures.end(); ++ capIt) {
+                ptr->captures.push_back({
+                    capIt.key().toInt(),
+                    capIt.value().toMap()["name"].toString()
+                });
+            }
+        }
 
         rule = ptr.get();
         rules.push_back(std::move(ptr));
     }
-    else if (raw.contains("begin"))
+    else if (rawRule.contains("begin"))
     {
-        QString name = raw.contains("name") ? raw["name"].toString() : "";
+        QString name = rawRule.contains("name") ? rawRule["name"].toString() : "";
         auto ptr = std::make_unique<BeginEndRule>(
             name,
-            raw["begin"].toString(),
-            raw["end"].toString());
+            rawRule["begin"].toString(),
+            rawRule["end"].toString());
 
-        for (auto it = raw.find("beginCaptures"); it != raw.end() && it.key() == "beginCaptures"; ++it)
+        if (rawRule.contains("beginCaptures"))
         {
             // Parse begin captures
-            auto captures = it.value().toMap();
+            QMap<QString, QVariant> captures = rawRule["beginCaptures"].toMap();
             for (auto capIt = captures.begin(); capIt != captures.end(); ++capIt)
             {
                 ptr->beginCaptures.push_back({
@@ -115,9 +123,9 @@ Rule* Grammar::_parseRule(const QMap<QString, QVariant>& raw)
             }
         }
 
-        for (auto it = raw.find("endCaptures"); it != raw.end() && it.key() == "endCaptures"; ++it)
+        if (rawRule.contains("endCaptures"))
         {
-            auto captures = it.value().toMap();
+            QMap<QString, QVariant> captures = rawRule["endCaptures"].toMap();
             for (auto capIt = captures.begin(); capIt != captures.end(); ++capIt)
             {
                 ptr->endCaptures.push_back({
@@ -128,7 +136,7 @@ Rule* Grammar::_parseRule(const QMap<QString, QVariant>& raw)
         }
 
         // Parse nested patterns belonging to this BeginEndRule.
-        _parsePatternArray(raw, ptr->children);
+        _parsePatternArray(rawRule, ptr->children);
 
         rule = ptr.get();
         rules.push_back(std::move(ptr));
