@@ -1,5 +1,5 @@
-#include "core/nanon.hpp"
-#include "core/interpreter/nanon_python.hpp"
+#include "nanon.hpp"
+#include "interpreter/nanon_python.hpp"
 
 #include <QtWidgets/QApplication>
 
