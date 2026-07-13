@@ -1,6 +1,13 @@
 # Welcome to 559 Nanon!
 
 import functools
+
+# !! Missing the argument scope in this case:
+call_me = functools.partial(print, "hi")
+
+call_me()
+
+import functools
 from contextlib import contextmanager
 
 

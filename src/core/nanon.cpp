@@ -331,6 +331,7 @@ void NanonWindow::onRunCode()
     QString resultStderr = QString::fromStdString(result.stderr);
     outputWindow->moveCursor(QTextCursor::End);
     outputWindow->insertPlainText(resultStdout);
+    outputWindow->moveCursor(QTextCursor::End);
 }
 
 
