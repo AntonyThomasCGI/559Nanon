@@ -90,7 +90,7 @@ std::vector<Region> TextMateEngine::scanLine(const QString& inputText)
 
     // Emit regions for any contexts that are still active
     for (auto &ctx : stack) {
-        if (ctx.beginEndRule && !ctx.beginEndRule->name.isEmpty()) {
+        if (ctx.beginEndRule) {
 
             pushRegion(ctx.beginEndRule->name,
                        ctx.beginMatch.capturedStart(),
@@ -154,7 +154,7 @@ bool TextMateEngine::applyRule(
                 int start = match.capturedStart(cap.group);
                 int length = match.capturedLength(cap.group);
 
-                if (start >= 0 && !cap.name.isEmpty()) {
+                if (start >= 0) {
                     pushRegion(cap.name,
                                start,
                                length,

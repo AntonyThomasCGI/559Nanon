@@ -34,8 +34,7 @@ public:
 };
 
 
-// TODO, captures can have patterns. But this seems obscurely
-// used in most grammar files I've looked at
+// TODO, captures can have patterns.
 struct Capture {
     int group;
     QString name;

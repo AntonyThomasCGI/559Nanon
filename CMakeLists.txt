@@ -14,23 +14,22 @@ include_directories(external/nlohmann/json)
 
 
 
-# Add your source files
 add_executable(${PROJECT_NAME}
-    src/interpreter/nanon_interpreter_base.hpp
-    src/interpreter/nanon_python.cpp
-    src/interpreter/nanon_python.hpp
-    src/io/nanon_socket.hpp
-    src/io/nanon_textmate.cpp
-    src/io/nanon_textmate.hpp
-    src/nanon.cpp
-    src/nanon.hpp
-    src/nanon_standalone.cpp
-    src/textmate/nanon_engine.cpp
-    src/textmate/nanon_engine.hpp
-    src/textmate/nanon_grammar.cpp
-    src/textmate/nanon_grammar.hpp
-    src/textmate/nanon_rule.cpp
-    src/textmate/nanon_rule.hpp
+    src/core/interpreter/nanon_interpreter_base.hpp
+    src/core/interpreter/nanon_python.cpp
+    src/core/interpreter/nanon_python.hpp
+    src/core/io/nanon_socket.hpp
+    src/core/io/nanon_textmate.cpp
+    src/core/io/nanon_textmate.hpp
+    src/core/nanon.cpp
+    src/core/nanon.hpp
+    src/core/textmate/nanon_engine.cpp
+    src/core/textmate/nanon_engine.hpp
+    src/core/textmate/nanon_grammar.cpp
+    src/core/textmate/nanon_grammar.hpp
+    src/core/textmate/nanon_rule.cpp
+    src/core/textmate/nanon_rule.hpp
+    src/standalone/main.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE src)

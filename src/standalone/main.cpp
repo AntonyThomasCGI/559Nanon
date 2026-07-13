@@ -1,6 +1,5 @@
-
-#include "nanon.hpp"
-#include "interpreter/nanon_python.hpp"
+#include "core/nanon.hpp"
+#include "core/interpreter/nanon_python.hpp"
 
 #include <QtWidgets/QApplication>
 
@@ -28,3 +27,4 @@ int main(int argc, char *argv[])
 
     return app.exec();
 }
+
