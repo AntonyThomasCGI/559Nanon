@@ -329,9 +329,8 @@ void NanonWindow::onRunCode()
 
     QString resultStdout = QString::fromStdString(result.stdout);
     QString resultStderr = QString::fromStdString(result.stderr);
-    outputWindow->moveCursor(QTextCursor::End);
-    outputWindow->insertPlainText(resultStdout);
-    outputWindow->moveCursor(QTextCursor::End);
+
+    appendOutput(resultStdout);
 }
 
 
@@ -372,7 +371,10 @@ void NanonWindow::createStatusBar()
 
 void NanonWindow::appendOutput(QString text)
 {
+    // Append to end of output
+    this->outputWindow->moveCursor (QTextCursor::End);
     this->outputWindow->insertPlainText(text);
+    // Force re-scroll to the bottom
     this->outputWindow->moveCursor (QTextCursor::End);
 }
 

@@ -12,8 +12,8 @@
 
 #include <iostream>
 
-#define	kReloadFlag			"-rl"
-#define	kReloadFlagLong		"-reload"
+#define    kReloadFlag            "-rl"
+#define    kReloadFlagLong        "-reload"
 
 
 MCallbackId outputCallbackId;
@@ -23,15 +23,15 @@ MCallbackId outputCallbackId;
 // automatically set itself to zero if the workspace control is closed on its own.
 // (See the devkit plugin "workspaceControlCmd.cpp")
 QPointer<QWidget> NanonCmd::workspaceControl;
-//QPointer<NanonWindow> NanonCmd::nanon;
+QPointer<NanonWindow> NanonCmd::nanon;
 const MString NanonCmd::commandName("nanon");
 
 
 void NanonCmd::cleanup()
 {
     if (!workspaceControl.isNull()) {
-        //delete nanon;
-        MString closeCommand("workspaceControl -e -close customWorkspaceControl");
+        delete nanon;
+        MString closeCommand("workspaceControl -e -close nanonWorkspaceControl");
         MGlobal::executeCommand(closeCommand);
     }
 
@@ -57,7 +57,7 @@ MSyntax NanonCmd::newSyntax()
 void NanonCmd::outputCallback(const MString &message, MCommandMessage::MessageType messageType)
 {
     QString text = QString(message.asChar());
-    //nanon->appendOutput(text);
+    nanon->appendOutput(text);
 }
 
 
@@ -65,35 +65,35 @@ void NanonCmd::outputCallback(const MString &message, MCommandMessage::MessageTy
 MStatus NanonCmd::doIt(const MArgList& args)
 {
     if(!workspaceControl.isNull()) {
-		// Call -restore on existing workspace control to make it visible from whatever previous state it was in
-		MString restoreCommand("workspaceControl -e -restore customWorkspaceControl");
-		MGlobal::executeCommand(restoreCommand);
-	} else {
+        // Call -restore on existing workspace control to make it visible from whatever previous state it was in
+        MString restoreCommand("workspaceControl -e -restore nanonWorkspaceControl");
+        MGlobal::executeCommand(restoreCommand);
+    } else {
 
-		MArgParser argParser( syntax(), args );
-		bool doReload = argParser.isFlagSet( kReloadFlag );
+        MArgParser argParser( syntax(), args );
+        bool doReload = argParser.isFlagSet( kReloadFlag );
 
-		// If we're reloading a workspace, the workspace control should already be created
-		if (!doReload) {
-			MGlobal::executeCommand("workspaceControl -label \"Custom Workspace Control\" -retain false -deleteLater false -loadImmediately true -floating true -initialWidth 400 -initialHeight 200 -requiredPlugin \"NanonCmd\" customWorkspaceControl");
-		}
+        // If we're reloading a workspace, the workspace control should already be created
+        if (!doReload) {
+            MGlobal::executeCommand("workspaceControl -label \"559 Nanon\" -retain false -deleteLater false -loadImmediately true -floating true -initialWidth 400 -initialHeight 200 -requiredPlugin \"NanonCmd\" nanonWorkspaceControl");
+        }
 
-		// Create nanon UI
-		workspaceControl = MQtUtil::getCurrentParent();
-		NanonWindow *nanon = new NanonWindow();
+        // Create nanon UI
+        workspaceControl = MQtUtil::getCurrentParent();
+        nanon = new NanonWindow();
 
-		// Add UI as a child of the workspace control
-		MQtUtil::addWidgetToMayaLayout(nanon, workspaceControl);
+        // Add UI as a child of the workspace control
+        MQtUtil::addWidgetToMayaLayout(nanon, workspaceControl);
 
-		// Set the -uiScript (used to rebuild UI when reloading workspace) after creation so that it doesn't get executed
-		if (!doReload) {
-			MString uiScriptCommand("workspaceControl -e -uiScript \"workspaceControlWindow -reload\" customWorkspaceControl");
-			MGlobal::executeCommand(uiScriptCommand);
-		}
+        // Set the -uiScript (used to rebuild UI when reloading workspace) after creation so that it doesn't get executed
+        if (!doReload) {
+            MString uiScriptCommand("workspaceControl -e -uiScript \"workspaceControlWindow -reload\" nanonWorkspaceControl");
+            MGlobal::executeCommand(uiScriptCommand);
+        }
 
         // Callback for appending any maya script editor content to the nanon window
         outputCallbackId = MCommandMessage::addCommandOutputCallback((MCommandMessage::MMessageFunction) outputCallback);
-	}
+    }
 
     return MS::kSuccess;
 }

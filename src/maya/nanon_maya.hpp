@@ -25,5 +25,5 @@ public:
     static const MString commandName;
 
 private:
-    //static QPointer<NanonWindow> nanon;
+    static QPointer<NanonWindow> nanon;
 };
