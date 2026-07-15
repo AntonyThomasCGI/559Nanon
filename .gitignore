@@ -1,6 +1,5 @@
 
 build/
 .vscode/
-*tmLanguage*
 tags
 .DS_Store
