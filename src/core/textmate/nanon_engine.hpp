@@ -6,6 +6,7 @@
 #include <QtCore/QString>
 #include <QtCore/QRegularExpressionMatch>
 
+#include <unordered_set>
 #include <vector>
 
 

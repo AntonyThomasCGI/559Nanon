@@ -51,7 +51,6 @@ void Grammar::_ingestGrammar(QMap<QString, QVariant> rawGrammar)
             include->resolved = _resolveInclude(include->include);
         }
     }
-    std::cout << "done" << std::endl;
 }
 
 void Grammar::_parsePatternArray(const QMap<QString, QVariant>& rawRule, RuleGroup& currentGroup)

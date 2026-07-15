@@ -1,6 +1,6 @@
 #pragma once
 
-#include "nanon_interpreter_base.hpp"
+#include "nanon_interpreter.hpp"
 
 #include <string>
 

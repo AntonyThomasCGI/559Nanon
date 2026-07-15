@@ -26,6 +26,8 @@ NanonPythonInterpreter::~NanonPythonInterpreter()
 
 bool NanonPythonInterpreter::start()
 {
+    std::cout << "Starting python interpreter" << std::endl;
+
     pid = fork();
 
     if (pid < 0) {
@@ -41,7 +43,7 @@ bool NanonPythonInterpreter::start()
             "python3",
             "python3",
             "-u",
-            "python/_nanon/kernel.py",
+            "python/nanon/kernel.py",
             nullptr
         );
 
@@ -77,7 +79,7 @@ ExecutionResult NanonPythonInterpreter::executeCode(std::string& code)
         len = ntohl(len);
 
         std::string payload(len, '\0');
-        nanon::readAll(socketFd, static_cast<void*>(payload.data()), len);
+        nanon::readAll(socketFd, const_cast<void*>(static_cast<const void*>(payload.data())), len);
 
         auto json = nlohmann::json::parse(payload);
 

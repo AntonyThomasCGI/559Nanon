@@ -2,9 +2,9 @@
 include_directories(external/nlohmann/json)
 
 add_library(nanon_core SHARED
-    interpreter/nanon_interpreter_base.hpp
-    interpreter/nanon_python.cpp
-    interpreter/nanon_python.hpp
+    interpreters/nanon_interpreter.hpp
+    interpreters/nanon_python.cpp
+    interpreters/nanon_python.hpp
     io/nanon_socket.hpp
     io/nanon_textmate.cpp
     io/nanon_textmate.hpp

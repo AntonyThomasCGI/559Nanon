@@ -3,7 +3,7 @@
 #include "io/nanon_textmate.hpp"
 #include "textmate/nanon_engine.hpp"
 #include "textmate/nanon_grammar.hpp"
-#include "interpreter/nanon_interpreter_base.hpp"
+#include "interpreters/nanon_interpreter.hpp"
 
 #include <QtCore/QRegularExpression>
 #include <QtCore/QPointer>

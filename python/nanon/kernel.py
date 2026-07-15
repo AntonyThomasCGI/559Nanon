@@ -35,11 +35,10 @@ class SocketWriter:
 class ReprSocketWriter(SocketWriter):
 
     def write(self, text):
-        if text:
-            self.send({
-                "event": self.event,
-                "text": repr(text) + "\n",
-            })
+        self.send({
+            "event": self.event,
+            "text": repr(text) + "\n",
+        })
 
 
 class Worker:

@@ -347,8 +347,6 @@ void NanonWindow::onShowScopesAtCursor()
 
     QVector<QString> scopes = highlighter->scopesAtPosition(currentBlock, cursorPosition);
 
-    std::cout << std::to_string(scopes.length()) << std::endl;
-
     const QPoint cursorCoordinates = editor->cursorRect().bottomRight();
     QMenu menu("Scopes", this);
     bool hasScope = false;
@@ -504,12 +502,14 @@ void Highlighter::setSyntaxFromFile(QString fileName)
 
     keywordFormat.setForeground(Qt::darkMagenta);
     multiLineFormat.setForeground(QColor(191, 255, 0, 255));
-    commentFormat.setForeground(Qt::darkGreen);
+    commentFormat.setForeground(QColor(100, 100, 100, 255));
     stringFormat.setForeground(Qt::darkCyan);
     specialFormat.setForeground(QColor(191, 255, 0, 255));
     variableFormat.setForeground(Qt::lightGray);
     escapeFormat.setForeground(Qt::darkRed);
     numberFormat.setForeground(QColor(255, 0, 128, 255));
+
+    commentFormat.setFontItalic(true);
 
     // super hardcoded atm lol.
     // this will eventually read from a json file.

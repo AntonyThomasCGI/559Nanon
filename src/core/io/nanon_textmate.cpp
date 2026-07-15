@@ -62,10 +62,10 @@ QVariant parseRecursive(QXmlStreamReader *xmlRead)
         return QVariant();
 
     if (token == QXmlStreamReader::StartElement) {
-        if (xmlRead->name() == "string" || xmlRead->name() == "key") {
+        if (xmlRead->name() == u"string" || xmlRead->name() == u"key") {
             return QString(xmlRead->readElementText());
         }
-        if (xmlRead->name() == "array") {
+        if (xmlRead->name() == u"array") {
             QList<QVariant> arrayResult;
             QVariant arrayValue;
             while ((arrayValue = parseRecursive(xmlRead)).isValid()) {
@@ -73,7 +73,7 @@ QVariant parseRecursive(QXmlStreamReader *xmlRead)
             }
             return arrayResult;
         }
-        if (xmlRead->name() == "dict") {
+        if (xmlRead->name() == u"dict") {
             QMap<QString, QVariant> dictResult;
             QVariant key;
             while ((key = parseRecursive(xmlRead)).isValid()) {
