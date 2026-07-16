@@ -1,5 +1,6 @@
 
 #include "nanon_maya.hpp"
+#include "nanon_maya_interpreter.hpp"
 
 #include <maya/MArgParser.h>
 #include <maya/MFnPlugin.h>
@@ -81,6 +82,8 @@ MStatus NanonCmd::doIt(const MArgList& args)
         // Create nanon UI
         workspaceControl = MQtUtil::getCurrentParent();
         nanon = new NanonWindow();
+        NanonMayaInterpreter *interpreter = new NanonMayaInterpreter();
+        nanon->setInterpreter(interpreter);
 
         // Add UI as a child of the workspace control
         MQtUtil::addWidgetToMayaLayout(nanon, workspaceControl);

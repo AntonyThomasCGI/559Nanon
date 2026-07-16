@@ -50,6 +50,8 @@ message(STATUS "Qt6 Widgets soname: ${QT_WIDGETS_FRAMEWORK}")
 
 
 add_library(nanon_maya MODULE
+    nanon_maya_interpreter.hpp
+    nanon_maya_interpreter.cpp
     nanon_maya.hpp
     nanon_maya.cpp
 )
