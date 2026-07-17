@@ -1,6 +1,6 @@
 #pragma once
 
-#include "nanon/ui.hpp"
+#include "nanon/window.hpp"
 
 #include <QtCore/QPointer>
 #include <QtWidgets/QWidget>

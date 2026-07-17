@@ -1,4 +1,4 @@
-#include "nanon/ui.hpp"
+#include "nanon/window.hpp"
 #include "nanon/interpreter/python.hpp"
 
 #include <QtWidgets/QApplication>

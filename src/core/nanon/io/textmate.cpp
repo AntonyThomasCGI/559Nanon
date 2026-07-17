@@ -3,9 +3,10 @@
 #include <iostream>
 
 #include <QtCore/QFile>
-#include <QtCore/QJsonParseError>
-#include <QtCore/QXmlStreamReader>
 #include <QtCore/QJsonDocument>
+#include <QtCore/QJsonParseError>
+#include <QtCore/QString>
+#include <QtCore/QXmlStreamReader>
 
 using namespace nanon::io;
 

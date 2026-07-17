@@ -14,8 +14,12 @@ add_library(nanon_core SHARED
     nanon/textmate/grammar.hpp
     nanon/textmate/rule.cpp
     nanon/textmate/rule.hpp
-    nanon/ui.cpp
-    nanon/ui.hpp
+    nanon/widgets/editor.cpp
+    nanon/widgets/editor.hpp
+    nanon/widgets/highlighter.cpp
+    nanon/widgets/highlighter.hpp
+    nanon/window.cpp
+    nanon/window.hpp
 )
 
 target_link_libraries(nanon_core PUBLIC Qt6::Core Qt6::Widgets nlohmann_json)
