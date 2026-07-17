@@ -1,8 +1,12 @@
 #pragma once
 
-#include "nanon_interpreter.hpp"
+#include "nanon/interpreter/base.hpp"
 
 #include <string>
+
+
+namespace nanon {
+namespace interpreter {
 
 
 static const char* SOCKET_PATH = "/tmp/nanon.sock";
@@ -23,3 +27,7 @@ private:
     int readFd;
 
 };
+
+
+};  // namespace interpreter
+};  // namespace nanon

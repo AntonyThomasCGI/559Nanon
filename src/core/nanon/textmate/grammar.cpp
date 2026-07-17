@@ -1,7 +1,10 @@
 
-#include "nanon_grammar.hpp"
+#include "nanon/textmate/grammar.hpp"
 
 #include <iostream>
+
+
+using namespace nanon::textmate;
 
 
 Grammar::Grammar(QString scopeName, QMap<QString, QVariant> rawGrammar)

@@ -1,7 +1,10 @@
 
-#include "nanon_engine.hpp"
+#include "nanon/textmate/engine.hpp"
 
 #include <iostream>
+
+
+using namespace nanon::textmate;
 
 
 TextMateEngine::TextMateEngine(RuleGroup* root)

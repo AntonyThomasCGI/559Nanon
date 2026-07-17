@@ -2,20 +2,20 @@
 include_directories(external/nlohmann/json)
 
 add_library(nanon_core SHARED
-    interpreters/nanon_interpreter.hpp
-    interpreters/nanon_python.cpp
-    interpreters/nanon_python.hpp
-    io/nanon_socket.hpp
-    io/nanon_textmate.cpp
-    io/nanon_textmate.hpp
-    nanon.cpp
-    nanon.hpp
-    textmate/nanon_engine.cpp
-    textmate/nanon_engine.hpp
-    textmate/nanon_grammar.cpp
-    textmate/nanon_grammar.hpp
-    textmate/nanon_rule.cpp
-    textmate/nanon_rule.hpp
+    nanon/interpreter/base.hpp
+    nanon/interpreter/python.cpp
+    nanon/interpreter/python.hpp
+    nanon/io/socket.hpp
+    nanon/io/textmate.cpp
+    nanon/io/textmate.hpp
+    nanon/textmate/engine.cpp
+    nanon/textmate/engine.hpp
+    nanon/textmate/grammar.cpp
+    nanon/textmate/grammar.hpp
+    nanon/textmate/rule.cpp
+    nanon/textmate/rule.hpp
+    nanon/ui.cpp
+    nanon/ui.hpp
 )
 
 target_link_libraries(nanon_core PUBLIC Qt6::Core Qt6::Widgets nlohmann_json)

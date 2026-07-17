@@ -1,9 +1,9 @@
 #pragma once
 
-#include "io/nanon_textmate.hpp"
-#include "textmate/nanon_engine.hpp"
-#include "textmate/nanon_grammar.hpp"
-#include "interpreters/nanon_interpreter.hpp"
+#include "nanon/interpreter/base.hpp"
+#include "nanon/io/textmate.hpp"
+#include "nanon/textmate/engine.hpp"
+#include "nanon/textmate/grammar.hpp"
 
 #include <QtCore/QRegularExpression>
 #include <QtCore/QPointer>
@@ -13,6 +13,9 @@
 #include <QtGui/QTextDocument>
 
 #include <memory>
+
+
+namespace nanon {
 
 
 class NanonEditor : public QPlainTextEdit
@@ -66,7 +69,7 @@ class ScopeBlockData : public QTextBlockUserData
     // Q_OBJECT
 
 public:
-    QVector<Region> regions;
+    QVector<textmate::Region> regions;
 };
 
 
@@ -87,7 +90,7 @@ private:
 
     struct BlockState
     {
-        std::vector<Context> stack;
+        std::vector<textmate::Context> stack;
     };
 
     void setSyntaxFromFile(QString fileName);
@@ -97,8 +100,8 @@ private:
 
     ScopeBlockData* previousBlockUserData() const;
 
-    std::unique_ptr<Grammar> m_grammar;
-    std::unique_ptr<TextMateEngine> m_engine;
+    std::unique_ptr<textmate::Grammar> m_grammar;
+    std::unique_ptr<textmate::TextMateEngine> m_engine;
     QHash<int, BlockState> m_stateCache;
 };
 
@@ -113,7 +116,7 @@ public:
 
 	void appendOutput(QString text);
 
-    void setInterpreter(NanonInterpreterBase* interpreter);
+    void setInterpreter(interpreter::NanonInterpreterBase* interpreter);
 
 private:
     void createStatusBar();
@@ -125,7 +128,7 @@ private:
 
     Highlighter *highlighter;
 
-    NanonInterpreterBase* m_interpreter = nullptr;
+    interpreter::NanonInterpreterBase* m_interpreter = nullptr;
 
     void onRunCode();
     void onShowScopesAtCursor();
@@ -134,3 +137,5 @@ private:
     // QPlainTextEdit *outputWindow;
     // QPlainTextEdit *editor;
 };
+
+};  // namespace nanon

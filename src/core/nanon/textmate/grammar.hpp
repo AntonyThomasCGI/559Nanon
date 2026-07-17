@@ -1,6 +1,6 @@
 #pragma once
 
-#include "nanon_rule.hpp"
+#include "nanon/textmate/rule.hpp"
 
 #include <QtCore/QMap>
 #include <QtCore/QString>
@@ -8,6 +8,9 @@
 
 #include <unordered_map>
 #include <vector>
+
+namespace nanon {
+namespace textmate {
 
 
 class Grammar : public RuleGroup
@@ -35,3 +38,6 @@ private:
 
     RuleGroup* _resolveInclude(const QString& include);
 };
+
+};  // namespace textmate
+};  // namespace nanon

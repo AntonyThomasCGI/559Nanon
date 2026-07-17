@@ -1,6 +1,6 @@
 
-#include "nanon.hpp"
-#include "textmate/nanon_rule.hpp"
+#include "nanon/ui.hpp"
+#include "nanon/textmate/rule.hpp"
 
 #include <QFont>
 #include <QFontDatabase>
@@ -24,6 +24,9 @@
 #ifndef RESOURCE_PATH
 #define RESOURCE_PATH ""
 #endif
+
+
+using namespace nanon;
 
 
 NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
@@ -325,7 +328,7 @@ void NanonWindow::onRunCode()
     QString content = editor->toPlainText();
     std::string strContent = content.toStdString();
 
-    ExecutionResult result = m_interpreter->executeCode(strContent);
+    interpreter::ExecutionResult result = m_interpreter->executeCode(strContent);
 
     QString resultStdout = QString::fromStdString(result.stdout);
     QString resultStderr = QString::fromStdString(result.stderr);
@@ -379,7 +382,7 @@ void NanonWindow::appendOutput(QString text)
 }
 
 
-void NanonWindow::setInterpreter(NanonInterpreterBase* interpreter)
+void NanonWindow::setInterpreter(interpreter::NanonInterpreterBase* interpreter)
 {
     m_interpreter = interpreter;
 }
@@ -396,7 +399,7 @@ Highlighter::Highlighter(QTextDocument *parent)
 
     this->setSyntaxFromFile(file);
 
-    m_engine = std::make_unique<TextMateEngine>(&m_grammar->root);
+    m_engine = std::make_unique<textmate::TextMateEngine>(&m_grammar->root);
 }
 
 
@@ -427,7 +430,7 @@ void Highlighter::highlightBlock(const QString &text)
         m_engine->stack.push_back({&m_grammar->root, nullptr});
     }
 
-    std::vector<Region> regions = m_engine->scanLine(text);
+    std::vector<textmate::Region> regions = m_engine->scanLine(text);
     //std::cout << "regions for block " << std::to_string(block) << std::endl;
     //for (auto& region : regions) {
     //    std::cout << region.scope.toStdString() << " " << std::to_string(region.start) << " " << std::to_string(region.length) << std::endl;
@@ -439,7 +442,7 @@ void Highlighter::highlightBlock(const QString &text)
 
     for (auto it = regions.rbegin(); it < regions.rend(); ++it)
     {
-        Region region = *it;
+        textmate::Region region = *it;
         if (formats.contains(region.scope)) {
             // Set highlighting.
             setFormat(region.start, region.length, formats.value(region.scope));
@@ -480,18 +483,18 @@ QVector<QString> Highlighter::scopesAtPosition(const QTextBlock &currentBlock, i
 
 void Highlighter::setSyntaxFromFile(QString fileName)
 {
-    TextMateParseError err;
+    nanon::io::TextMateParseError err;
 
-    TextMateParser tmParser = TextMateParser();
+    nanon::io::TextMateParser tmParser = nanon::io::TextMateParser();
     QVariant tmData = tmParser.parse(fileName, err);
-    if (err.error != TextMateParseError::ParseError::NoError) {
+    if (err.error != nanon::io::TextMateParseError::ParseError::NoError) {
         std::cout << "ERROR: " << qUtf8Printable(err.errorString) << std::endl;
         return;
     }
 
     QMap<QString, QVariant> map = tmData.toMap();
 
-    m_grammar = std::make_unique<Grammar>("my scope", map);
+    m_grammar = std::make_unique<textmate::Grammar>("my scope", map);
 
     QTextCharFormat keywordFormat;
     QTextCharFormat multiLineFormat;

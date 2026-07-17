@@ -1,5 +1,4 @@
-
-#include "nanon_textmate.hpp"
+#include "nanon/io/textmate.hpp"
 
 #include <iostream>
 
@@ -7,6 +6,8 @@
 #include <QtCore/QJsonParseError>
 #include <QtCore/QXmlStreamReader>
 #include <QtCore/QJsonDocument>
+
+using namespace nanon::io;
 
 
 TextMateParser::TextMateParser()

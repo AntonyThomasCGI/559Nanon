@@ -1,7 +1,7 @@
 
 
-#include "nanon_python.hpp"
-#include "../io/nanon_socket.hpp"
+#include "nanon/interpreter/python.hpp"
+#include "nanon/io/socket.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -10,6 +10,9 @@
 #include <unistd.h>
 
 #include <nlohmann/json.hpp>
+
+
+using namespace nanon::interpreter;
 
 
 NanonPythonInterpreter::NanonPythonInterpreter()
@@ -60,9 +63,9 @@ bool NanonPythonInterpreter::start()
 
 ExecutionResult NanonPythonInterpreter::executeCode(std::string& code)
 {
-    int socketFd = nanon::connectToSocket(SOCKET_PATH);
+    int socketFd = nanon::io::connectToSocket(SOCKET_PATH);
 
-    bool result = nanon::sendJson(socketFd, code);
+    bool result = nanon::io::sendJson(socketFd, code);
     if (!result) {
         std::cerr << "ERROR: Could not send code" << std::endl;
     }
@@ -75,11 +78,11 @@ ExecutionResult NanonPythonInterpreter::executeCode(std::string& code)
 
     while (true) {
         uint32_t len;
-        nanon::readAll(socketFd, &len, 4);
+        nanon::io::readAll(socketFd, &len, 4);
         len = ntohl(len);
 
         std::string payload(len, '\0');
-        nanon::readAll(socketFd, const_cast<void*>(static_cast<const void*>(payload.data())), len);
+        nanon::io::readAll(socketFd, const_cast<void*>(static_cast<const void*>(payload.data())), len);
 
         auto json = nlohmann::json::parse(payload);
 

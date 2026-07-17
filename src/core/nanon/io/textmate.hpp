@@ -3,6 +3,9 @@
 #include <QtCore/QString>
 #include <QtCore/QVariant>
 
+namespace nanon {
+namespace io {
+
 struct TextMateParseError {
     enum ParseError {NoError, IOFailure, InvalidJson, InvalidPList};
     TextMateParseError::ParseError error;
@@ -25,3 +28,6 @@ public:
 
     QVariant parseJSON(QString filename, TextMateParseError &err);
 };
+
+};  // namespace io
+};  // namespace nanon

@@ -4,6 +4,10 @@
 #include <string>
 
 
+namespace nanon {
+namespace interpreter {
+
+
 struct ExecutionResult {
     bool success;
     std::string stdout;
@@ -22,3 +26,7 @@ public:
     virtual ExecutionResult executeCode(std::string& code) = 0;
 
 };
+
+
+};  // namespace interpreter
+};  // namespace nanon

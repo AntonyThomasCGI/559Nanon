@@ -1,6 +1,6 @@
 #pragma once
 
-#include "nanon.hpp"
+#include "nanon/ui.hpp"
 
 #include <QtCore/QPointer>
 #include <QtWidgets/QWidget>
@@ -25,5 +25,5 @@ public:
     static const MString commandName;
 
 private:
-    static QPointer<NanonWindow> nanon;
+    static QPointer<nanon::NanonWindow> nanon;
 };

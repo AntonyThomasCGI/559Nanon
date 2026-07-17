@@ -1,13 +1,17 @@
 #pragma once
 
-#include "nanon_grammar.hpp"
-#include "nanon_rule.hpp"
+#include "nanon/textmate/grammar.hpp"
+#include "nanon/textmate/rule.hpp"
 
 #include <QtCore/QString>
 #include <QtCore/QRegularExpressionMatch>
 
 #include <unordered_set>
 #include <vector>
+
+
+namespace nanon {
+namespace textmate {
 
 
 /**
@@ -55,3 +59,6 @@ public:
 
     std::vector<Context> stack;
 };
+
+};  // namespace textmate
+};  // namespace nanon

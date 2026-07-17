@@ -1,5 +1,5 @@
-#include "nanon.hpp"
-#include "interpreters/nanon_python.hpp"
+#include "nanon/ui.hpp"
+#include "nanon/interpreter/python.hpp"
 
 #include <QtWidgets/QApplication>
 
@@ -11,12 +11,12 @@ int main(int argc, char *argv[])
 {
     std::cout << "Launching Nanon" << std::endl;
 
-    NanonPythonInterpreter *interpreter = new NanonPythonInterpreter();
+    auto *interpreter = new nanon::interpreter::NanonPythonInterpreter();
 
     interpreter->start();
 
     QApplication app(argc, argv);
-    NanonWindow nanon;
+    nanon::NanonWindow nanon;
     nanon.resize(800, 600);
 
     nanon.setInterpreter(interpreter);

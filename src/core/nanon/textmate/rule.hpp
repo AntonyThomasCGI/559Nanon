@@ -9,6 +9,9 @@
 #include <vector>
 
 
+namespace nanon {
+namespace textmate {
+
 
 class Rule
 {
@@ -77,3 +80,7 @@ public:
     QString include;
     RuleGroup* resolved = nullptr;
 };
+
+
+};  // namespace textmate
+};  // namespace nanon

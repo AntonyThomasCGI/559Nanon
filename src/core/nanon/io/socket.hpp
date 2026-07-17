@@ -11,6 +11,7 @@
 
 
 namespace nanon {
+namespace io {
 
 
 int connectToSocket(std::string socketPath)
@@ -79,4 +80,5 @@ bool readAll(int fd, void* data, size_t size)
     return true;
 };
 
+};  // namespace io
 };  // namespace nanon

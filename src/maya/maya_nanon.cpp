@@ -1,6 +1,6 @@
 
-#include "nanon_maya.hpp"
-#include "nanon_maya_interpreter.hpp"
+#include "maya_interpreter.hpp"
+#include "maya_nanon.hpp"
 
 #include <maya/MArgParser.h>
 #include <maya/MFnPlugin.h>
@@ -24,7 +24,7 @@ MCallbackId outputCallbackId;
 // automatically set itself to zero if the workspace control is closed on its own.
 // (See the devkit plugin "workspaceControlCmd.cpp")
 QPointer<QWidget> NanonCmd::workspaceControl;
-QPointer<NanonWindow> NanonCmd::nanon;
+QPointer<nanon::NanonWindow> NanonCmd::nanon;
 const MString NanonCmd::commandName("nanon");
 
 
@@ -81,7 +81,7 @@ MStatus NanonCmd::doIt(const MArgList& args)
 
         // Create nanon UI
         workspaceControl = MQtUtil::getCurrentParent();
-        nanon = new NanonWindow();
+        nanon = new nanon::NanonWindow();
         NanonMayaInterpreter *interpreter = new NanonMayaInterpreter();
         nanon->setInterpreter(interpreter);
 

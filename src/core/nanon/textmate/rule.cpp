@@ -3,7 +3,10 @@
 
 #include <QtCore/QVariant>
 
-#include "nanon_rule.hpp"
+#include "nanon/textmate/rule.hpp"
+
+
+using namespace nanon::textmate;
 
 
 Rule::Rule(QString name)
