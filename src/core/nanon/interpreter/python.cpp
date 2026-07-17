@@ -39,9 +39,7 @@ bool NanonPythonInterpreter::start()
 
     if (pid == 0)
     {
-        // Child process
-
-        // Replace this process with Python kernel
+        // Child process is the python kernel
         execlp(
             "python3",
             "python3",
@@ -50,13 +48,11 @@ bool NanonPythonInterpreter::start()
             nullptr
         );
 
-        // If exec fails
+        // If exec ever fails
         _exit(1);
     }
 
-    // Allow python process to start up
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-
+    // Parent process returns
     return true;
 }
 
