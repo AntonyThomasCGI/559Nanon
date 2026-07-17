@@ -8,6 +8,13 @@
 #include <maya/MPxCommand.h>
 
 
+/**
+ * Defines the ``nanon`` maya command.
+ *
+ * On launch of the UI this command will:
+ *   - Register the maya script output into the nanon output window
+ *   - Places the nanon main window into a workspaceControl to integrate with maya workspaces
+ */
 class NanonCmd : public MPxCommand
 {
 public:

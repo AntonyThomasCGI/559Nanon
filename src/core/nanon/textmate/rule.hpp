@@ -13,6 +13,9 @@ namespace nanon {
 namespace textmate {
 
 
+/**
+ * The base class for all textmate rules.
+ */
 class Rule
 {
 public:
@@ -27,6 +30,9 @@ public:
 
 
 
+/**
+ * A collection of rules.
+ */
 class RuleGroup
 {
 public:
@@ -37,9 +43,14 @@ public:
 };
 
 
-// TODO, captures can have patterns.
+/**
+ * A regex capture group and scope name.
+ */
 struct Capture {
+    /** The regex group to this capture is for */
     int group;
+
+    /** The textmate scope name */
     QString name;
 };
 

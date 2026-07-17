@@ -19,26 +19,31 @@ namespace textmate {
  */
 struct Context
 {
-    // The group of rules to apply for this context
+    /** The group of rules to apply for this context */
     RuleGroup* group;
 
-    // The begin/end rule that is active for this context
+    /** The begin/end rule that is active for this context */
     BeginEndRule* beginEndRule = nullptr;
 
-    // The match result for the begining of this context
+    /** The match result for the begining of this context */
     QRegularExpressionMatch beginMatch;
 
-    // The compiled end regex with substituted captures from the begin match
+    /** The compiled end regex with substituted captures from the begin match */
     QRegularExpression endRegex;
 };
 
 
 /**
- * Region represents the bounds of a successful match.
+ * Region represents the bounds of a successful match for a single textmate token (scope).
  */
 struct Region {
+    /** The textmate token/scope name */
     QString scope;
+
+    /** The start character number */
     long start;
+
+    /** The length of the region (starting from ``start``) */
     long length;
 };
 
@@ -50,6 +55,10 @@ public:
     virtual ~TextMateEngine() = default;
 
     std::vector<Region> scanLine(const QString& inputText);
+    std::vector<Context> stack;
+
+private:
+
     bool applyRule(
         Rule* rule,
         const QString& text,
@@ -57,7 +66,6 @@ public:
         std::vector<Region>& regions,
         std::unordered_set<const RuleGroup*> &visited);
 
-    std::vector<Context> stack;
 };
 
 };  // namespace textmate
