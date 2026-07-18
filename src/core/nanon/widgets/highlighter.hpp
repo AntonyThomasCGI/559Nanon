@@ -1,10 +1,8 @@
 
 #pragma once
 
-#include "nanon/io/textmate.hpp"
 #include "nanon/textmate/engine.hpp"
 #include "nanon/textmate/grammar.hpp"
-#include "nanon/widgets/editor.hpp"
 
 #include <QtGui/QSyntaxHighlighter>
 #include <QtGui/QTextDocument>
@@ -32,30 +30,18 @@ class Highlighter : public QSyntaxHighlighter
 
 public:
     Highlighter(QTextDocument *parent = 0);
-
-    QVector<QString> scopesAtPosition(const QTextBlock &currentBlock, int pos);
+    Highlighter(QTextDocument *parent, textmate::TextMateEngine *engine);
 
 protected:
     void highlightBlock(const QString &text);
 
 private:
-
-
-    struct BlockState
-    {
-        std::vector<textmate::Context> stack;
-    };
-
-    void setSyntaxFromFile(QString fileName);
-
+    void setHackyHighlighting();
     QMap<QString, QTextCharFormat> formats;
-
 
     ScopeBlockData* previousBlockUserData() const;
 
-    std::unique_ptr<textmate::Grammar> m_grammar;
-    std::unique_ptr<textmate::TextMateEngine> m_engine;
-    QHash<int, BlockState> m_stateCache;
+    textmate::TextMateEngine *m_textMateEngine;
 };
 
 

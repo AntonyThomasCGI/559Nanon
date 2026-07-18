@@ -1,6 +1,8 @@
 
-#include "nanon/window.hpp"
+#include "nanon/io/config.hpp"
+#include "nanon/languages/language.hpp"
 #include "nanon/textmate/rule.hpp"
+#include "nanon/window.hpp"
 
 #include <QFont>
 #include <QFontDatabase>
@@ -52,7 +54,18 @@ NanonWindow::NanonWindow(QWidget* parent)
         std::cerr << "Failed to load font: " << defaultFont.string() << std::endl;
     }
 
-    highlighter = new widgets::Highlighter(editor->document());
+    // Load python language config
+    std::filesystem::path languagePath = resourcePath / "configs" / "python" / "language_configuration.json";
+    io::ConfigParseError err;
+    auto configParser = io::ConfigParser();
+    QVariant confData = configParser.parse(languagePath.string().c_str(), err);
+    if (err.error != io::ConfigParseError::ParseError::NoError) {
+        std::cout << "ERROR Could not language config: " << qUtf8Printable(err.errorString) << std::endl;
+    } else {
+        std::cout << "Setting language config..." << std::endl;
+        QMap<QString, QVariant> languageConfig = confData.toMap();
+        languages::NanonLanguage language = languages::NanonLanguage(languageConfig);
+    }
 
     splitter->addWidget(outputWindow);
     splitter->addWidget(editor);
@@ -174,9 +187,9 @@ void NanonWindow::onShowScopesAtCursor()
         return;
     }
 
-    int cursorPosition = cursor.positionInBlock();
+    int pos = cursor.positionInBlock();
 
-    QVector<QString> scopes = highlighter->scopesAtPosition(currentBlock, cursorPosition);
+    QVector<QString> scopes = editor->scopesAtPosition(currentBlock.blockNumber(), pos);
 
     const QPoint cursorCoordinates = editor->cursorRect().bottomRight();
     QMenu menu("Scopes", this);

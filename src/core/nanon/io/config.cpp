@@ -1,6 +1,4 @@
-#include "nanon/io/textmate.hpp"
-
-#include <iostream>
+#include "nanon/io/config.hpp"
 
 #include <QtCore/QFile>
 #include <QtCore/QJsonDocument>
@@ -8,16 +6,18 @@
 #include <QtCore/QString>
 #include <QtCore/QXmlStreamReader>
 
+#include <iostream>
+
 using namespace nanon::io;
 
 
-TextMateParser::TextMateParser()
+ConfigParser::ConfigParser()
 {}
 
-TextMateParser::~TextMateParser()
+ConfigParser::~ConfigParser()
 {}
 
-QVariant TextMateParser::parse(QString filename, TextMateParseError &err)
+QVariant ConfigParser::parse(QString filename, ConfigParseError &err)
 {
     if (filename.endsWith(".json")) {
         return parseJSON(filename, err);
@@ -26,14 +26,14 @@ QVariant TextMateParser::parse(QString filename, TextMateParseError &err)
     }
 }
 
-QVariant TextMateParser::parseJSON(QString filename, TextMateParseError &err)
+QVariant ConfigParser::parseJSON(QString filename, ConfigParseError &err)
 {
     QFile file;
     file.setFileName(filename);
     if (!file.open(QIODevice::ReadOnly))
     {
         err.errorString = "Failed to open file: " + filename;
-        err.error = TextMateParseError::ParseError::IOFailure;
+        err.error = ConfigParseError::ParseError::IOFailure;
         return QVariant();
     }
     QByteArray bytesIn = file.readAll();
@@ -42,7 +42,7 @@ QVariant TextMateParser::parseJSON(QString filename, TextMateParseError &err)
     QJsonDocument doc = QJsonDocument::fromJson(bytesIn, &jsonErr);
     if (jsonErr.error != QJsonParseError::NoError) {
         err.errorString = jsonErr.errorString();
-        err.error = TextMateParseError::ParseError::InvalidJson;
+        err.error = ConfigParseError::ParseError::InvalidJson;
     }
     file.close();
 
@@ -91,14 +91,14 @@ QVariant parseRecursive(QXmlStreamReader *xmlRead)
 
 
 
-QVariant TextMateParser::parsePList(QString filename, TextMateParseError &err)
+QVariant ConfigParser::parsePList(QString filename, ConfigParseError &err)
 {
     QFile file;
     file.setFileName(filename);
     if (!file.open(QIODevice::ReadOnly))
     {
         err.errorString = "Failed to open file: " + filename;
-        err.error = TextMateParseError::ParseError::IOFailure;
+        err.error = ConfigParseError::ParseError::IOFailure;
         return QVariant();
     }
     QXmlStreamReader *xmlRead = new QXmlStreamReader(&file);
@@ -106,7 +106,7 @@ QVariant TextMateParser::parsePList(QString filename, TextMateParseError &err)
     QVariant result = parseRecursive(xmlRead);
     if (xmlRead->hasError()) {
         err.errorString = "Failed to parse plist";
-        err.error = TextMateParseError::ParseError::InvalidPList;
+        err.error = ConfigParseError::ParseError::InvalidPList;
         return QVariant();
     }
 

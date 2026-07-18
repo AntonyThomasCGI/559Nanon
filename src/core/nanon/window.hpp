@@ -37,8 +37,6 @@ private:
 
     widgets::NanonEditor *editor;
 
-    widgets::Highlighter *highlighter;
-
     interpreter::NanonInterpreterBase* m_interpreter = nullptr;
 
     void onRunCode();

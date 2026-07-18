@@ -1,4 +1,5 @@
 
+#include "nanon/io/config.hpp"
 #include "nanon/widgets/highlighter.hpp"
 
 #include <QtGui/QTextBlock>
@@ -8,11 +9,6 @@
 #include <vector>
 
 
-#ifndef RESOURCE_PATH
-#define RESOURCE_PATH ""
-#endif
-
-
 using namespace nanon::widgets;
 
 
@@ -20,13 +16,13 @@ Highlighter::Highlighter(QTextDocument *parent)
     : QSyntaxHighlighter(parent)
 {
 
-    std::filesystem::path resourcePath = RESOURCE_PATH;
-    std::filesystem::path grammarFile = resourcePath / "syntaxes" / "MagicPython.tmLanguage.json";
-    QString file = grammarFile.string().c_str();
+    setHackyHighlighting();
+}
 
-    this->setSyntaxFromFile(file);
-
-    m_engine = std::make_unique<textmate::TextMateEngine>(&m_grammar->root);
+Highlighter::Highlighter(QTextDocument *parent, textmate::TextMateEngine *engine)
+    : Highlighter(parent)
+{
+    m_textMateEngine = engine;
 }
 
 
@@ -45,23 +41,13 @@ ScopeBlockData* Highlighter::previousBlockUserData() const
 
 void Highlighter::highlightBlock(const QString &text)
 {
-
-    int block = currentBlock().blockNumber();
-    int prev = previousBlockState();
-
-    BlockState state;
-    if (m_stateCache.contains(block - 1)) {
-        m_engine->stack = m_stateCache[block - 1].stack;
-    } else {
-        m_engine->stack.clear();
-        m_engine->stack.push_back({&m_grammar->root, nullptr});
+    if (!m_textMateEngine) {
+        return;
     }
 
-    std::vector<textmate::Region> regions = m_engine->scanLine(text);
+    int blockN = currentBlock().blockNumber();
 
-    state.stack = m_engine->stack;
-    m_stateCache[block] = state;
-    setCurrentBlockState(block);
+    QVector<textmate::Region> regions = m_textMateEngine->parseBlock(blockN, text);
 
     for (auto it = regions.rbegin(); it < regions.rend(); ++it)
     {
@@ -74,51 +60,8 @@ void Highlighter::highlightBlock(const QString &text)
 }
 
 
-QVector<QString> Highlighter::scopesAtPosition(const QTextBlock &currentBlock, int pos)
+void Highlighter::setHackyHighlighting()
 {
-    int blockNum = currentBlock.blockNumber();
-
-    if (m_stateCache.contains(blockNum - 1)) {
-        m_engine->stack = m_stateCache[blockNum - 1].stack;
-    } else {
-        m_engine->stack.clear();
-        m_engine->stack.push_back({&m_grammar->root, nullptr});
-    }
-
-    const QString text = currentBlock.text();
-
-    // Ensure engine is in correct state for this line
-    auto regions = m_engine->scanLine(text);
-
-    QVector<QString> scopes;
-
-    for (const auto& r : regions)
-    {
-        if (pos >= r.start && pos < r.start + r.length)
-        {
-            scopes.push_back(r.scope);
-        }
-    }
-
-    return scopes;
-}
-
-
-void Highlighter::setSyntaxFromFile(QString fileName)
-{
-    nanon::io::TextMateParseError err;
-
-    nanon::io::TextMateParser tmParser = nanon::io::TextMateParser();
-    QVariant tmData = tmParser.parse(fileName, err);
-    if (err.error != nanon::io::TextMateParseError::ParseError::NoError) {
-        std::cout << "ERROR: " << qUtf8Printable(err.errorString) << std::endl;
-        return;
-    }
-
-    QMap<QString, QVariant> map = tmData.toMap();
-
-    m_grammar = std::make_unique<textmate::Grammar>("my scope", map);
-
     QTextCharFormat keywordFormat;
     QTextCharFormat multiLineFormat;
     QTextCharFormat commentFormat;

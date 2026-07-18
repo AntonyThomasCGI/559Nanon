@@ -7,7 +7,6 @@
 #include <QtCore/QRegularExpressionMatch>
 
 #include <unordered_set>
-#include <vector>
 
 
 namespace nanon {
@@ -48,24 +47,41 @@ struct Region {
 };
 
 
+struct BlockState
+{
+    QVector<textmate::Context> stack;
+    QVector<textmate::Region> regions;
+};
+
+
+
 class TextMateEngine
 {
 public:
-    TextMateEngine(RuleGroup* root);
+    TextMateEngine();
     virtual ~TextMateEngine() = default;
 
-    std::vector<Region> scanLine(const QString& inputText);
-    std::vector<Context> stack;
+    void setGrammar(std::unique_ptr<Grammar> grammar);
+    void setGrammarFromFile(QString fileName);
+
+    QVector<Region> parseBlock(int blockNumber, const QString& inputText);
+
+    QVector<QString> scopesAtPosition(int blockNumber, int pos);
 
 private:
+    QVector<Context> m_stack;
+    QHash<int, BlockState> m_blockCache;
+
+    QVector<Region> parseLine(const QString& inputText);
 
     bool applyRule(
         Rule* rule,
         const QString& text,
         int& pos,
-        std::vector<Region>& regions,
+        QVector<Region>& regions,
         std::unordered_set<const RuleGroup*> &visited);
 
+    std::unique_ptr<Grammar> m_grammar;
 };
 
 };  // namespace textmate

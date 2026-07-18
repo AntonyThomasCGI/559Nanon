@@ -1,4 +1,5 @@
 
+#include "nanon/io/config.hpp"
 #include "nanon/textmate/engine.hpp"
 
 #include <iostream>
@@ -7,13 +8,40 @@
 using namespace nanon::textmate;
 
 
-TextMateEngine::TextMateEngine(RuleGroup* root)
+TextMateEngine::TextMateEngine()
 {
-    stack.push_back({root});
 }
 
 
-void pushRegion(QString &name, int start, int length, std::vector<Region> &regions)
+void TextMateEngine::setGrammar(std::unique_ptr<Grammar> grammar)
+{
+    m_stack.clear();
+    m_blockCache.clear();
+
+    m_grammar = std::move(grammar);
+    m_stack.push_back({&m_grammar->root});
+}
+
+
+void TextMateEngine::setGrammarFromFile(QString fileName)
+{
+    nanon::io::ConfigParseError err;
+
+    nanon::io::ConfigParser tmParser = nanon::io::ConfigParser();
+    QVariant tmData = tmParser.parse(fileName, err);
+    if (err.error != nanon::io::ConfigParseError::ParseError::NoError) {
+        std::cout << "ERROR Could not load textmate grammar: " << qUtf8Printable(err.errorString) << std::endl;
+        return;
+    }
+
+    QMap<QString, QVariant> tmMap = tmData.toMap();
+
+    auto grammar = std::make_unique<textmate::Grammar>("my scope", tmMap);
+    setGrammar(std::move(grammar));
+}
+
+
+void pushRegion(QString &name, int start, int length, QVector<Region> &regions)
 {
     if (name.isEmpty()) {
         return;
@@ -29,19 +57,65 @@ void pushRegion(QString &name, int start, int length, std::vector<Region> &regio
 }
 
 
-std::vector<Region> TextMateEngine::scanLine(const QString& inputText)
+QVector<Region> TextMateEngine::parseBlock(int blockNumber, const QString& inputText)
+{
+    if (!m_grammar) {
+        std::cout << "WARNING: No grammar set but parseBlock called" << std::endl;
+        return {};
+    }
+
+    if (m_blockCache.contains(blockNumber - 1)) {
+        m_stack = m_blockCache[blockNumber - 1].stack;
+    } else {
+        m_stack.clear();
+        m_stack.push_back({&m_grammar->root, nullptr});
+    }
+
+    QVector<Region> regions = parseLine(inputText);
+
+    BlockState state;
+    state.stack = m_stack;
+    state.regions = regions;
+
+    m_blockCache[blockNumber] = state;
+
+    return regions;
+}
+
+
+QVector<QString> TextMateEngine::scopesAtPosition(int blockNumber, int pos)
+{
+    if (!m_blockCache.contains(blockNumber)) {
+        std::cout << "ERROR: Current block has no cached scopes!" << std::endl;
+        return {};
+    }
+
+    BlockState blockState = m_blockCache[blockNumber];
+    QVector<QString> scopes;
+    for (const textmate::Region& r : blockState.regions)
+    {
+        if (pos >= r.start && pos < r.start + r.length)
+        {
+            scopes.push_back(r.scope);
+        }
+    }
+    return scopes;
+}
+
+
+QVector<Region> TextMateEngine::parseLine(const QString& inputText)
 {
 
     // TODO, idk what the interaction is with "$" matches now
     const QString text = inputText + "\n";
 
-    std::vector<Region> regions;
+    QVector<Region> regions;
 
     int pos = 0;
 
     while (pos <= text.size())
     {
-        Context& ctx = stack.back();
+        Context& ctx = m_stack.back();
 
         // STEP 1: END RULE HAS PRIORITY
         if (ctx.beginEndRule != nullptr)
@@ -65,7 +139,7 @@ std::vector<Region> TextMateEngine::scanLine(const QString& inputText)
                            regions);
 
                 pos += match.capturedLength();
-                stack.pop_back();
+                m_stack.pop_back();
                 continue;
             }
         }
@@ -92,7 +166,7 @@ std::vector<Region> TextMateEngine::scanLine(const QString& inputText)
     }
 
     // Emit regions for any contexts that are still active
-    for (auto &ctx : stack) {
+    for (auto &ctx : m_stack) {
         if (ctx.beginEndRule) {
 
             pushRegion(ctx.beginEndRule->name,
@@ -110,7 +184,7 @@ bool TextMateEngine::applyRule(
     Rule* rule,
     const QString& text,
     int& pos,
-    std::vector<Region>& regions,
+    QVector<Region>& regions,
     std::unordered_set<const RuleGroup*> &visited)
 {
     // INCLUDE RULE
@@ -199,7 +273,7 @@ bool TextMateEngine::applyRule(
             ctx.beginEndRule = b;
             ctx.beginMatch = match;
             ctx.endRegex = QRegularExpression(endRegex);
-            stack.push_back(ctx);
+            m_stack.push_back(ctx);
 
             pos += match.capturedLength();
 

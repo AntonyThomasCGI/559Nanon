@@ -5,9 +5,11 @@ add_library(nanon_core SHARED
     nanon/interpreter/base.hpp
     nanon/interpreter/python.cpp
     nanon/interpreter/python.hpp
+    nanon/io/config.cpp
+    nanon/io/config.hpp
     nanon/io/socket.hpp
-    nanon/io/textmate.cpp
-    nanon/io/textmate.hpp
+    nanon/languages/language.cpp
+    nanon/languages/language.hpp
     nanon/textmate/engine.cpp
     nanon/textmate/engine.hpp
     nanon/textmate/grammar.cpp

@@ -1,6 +1,12 @@
 #pragma once
 
+#include "nanon/textmate/engine.hpp"
+#include "nanon/widgets/highlighter.hpp"
+
 #include <QtWidgets/QPlainTextEdit>
+#include <QtWidgets/QWidget>
+
+#include <memory>
 
 
 namespace nanon {
@@ -18,6 +24,9 @@ public:
     void lineNumberAreaPaintEvent(QPaintEvent *event);
     int lineNumberAreaWidth();
 
+    // TODO, idk if the main window should be accessing this.
+    QVector<QString> scopesAtPosition(int blockNumber, int pos) { return m_textMateEngine->scopesAtPosition(blockNumber, pos); };
+
 protected:
     void resizeEvent(QResizeEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
@@ -29,6 +38,10 @@ private slots:
 
 private:
     QWidget *lineNumberArea;
+
+    std::unique_ptr<textmate::TextMateEngine> m_textMateEngine;
+
+    std::unique_ptr<Highlighter> m_highlighter;
 };
 
 

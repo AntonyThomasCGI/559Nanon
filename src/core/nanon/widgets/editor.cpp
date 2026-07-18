@@ -1,8 +1,17 @@
 
+#include "nanon/io/config.hpp"
 #include "nanon/widgets/editor.hpp"
 
 #include <QtGui/QPainter>
 #include <QtGui/QTextBlock>
+
+#include <filesystem>
+#include <iostream>
+
+
+#ifndef RESOURCE_PATH
+#define RESOURCE_PATH ""
+#endif
 
 
 using namespace nanon::widgets;
@@ -13,17 +22,34 @@ NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
     this->setStyleSheet("background-color:black; color:Gainsboro");
     lineNumberArea = new LineNumberArea(this);
 
+    m_textMateEngine = std::make_unique<textmate::TextMateEngine>();
+
+    // TODO, make this configurable, for now always set python
+    std::filesystem::path resourcePath = RESOURCE_PATH;
+    std::filesystem::path grammarFile = resourcePath / "syntaxes" / "MagicPython.tmLanguage.json";
+    QString file = grammarFile.string().c_str();
+    m_textMateEngine->setGrammarFromFile(file);
+
     connect(this, &NanonEditor::blockCountChanged, this, &NanonEditor::updateLineNumberAreaWidth);
     connect(this, &NanonEditor::updateRequest, this, &NanonEditor::updateLineNumberArea);
     connect(this, &NanonEditor::cursorPositionChanged, this, &NanonEditor::highlightCurrentLine);
 
     updateLineNumberAreaWidth(0);
     highlightCurrentLine();
+
+    m_highlighter = std::make_unique<Highlighter>(document(), m_textMateEngine.get());
 }
 
 
 void NanonEditor::keyPressEvent(QKeyEvent *event)
 {
+
+    QTextCursor cursor = textCursor();
+    int blockN = cursor.block().blockNumber();
+    int pos = cursor.positionInBlock();
+
+    QVector<QString> scopes = m_textMateEngine->scopesAtPosition(blockN, pos);
+
     // Explicitly handle Shift/Meta + Enter so that a new textBlock is inserted.
     if (event->key() == Qt::Key_Return ||
         event->key() == Qt::Key_Enter) {
@@ -164,4 +190,3 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
         ++blockNumber;
     }
 }
-
