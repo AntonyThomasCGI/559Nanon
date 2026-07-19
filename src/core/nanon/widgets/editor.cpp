@@ -30,6 +30,20 @@ NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
     QString file = grammarFile.string().c_str();
     m_textMateEngine->setGrammarFromFile(file);
 
+    // Load python language config
+    std::filesystem::path languagePath = resourcePath / "configs" / "python" / "language_configuration.json";
+    io::ConfigParseError err;
+    auto configParser = io::ConfigParser();
+    QVariant confData = configParser.parse(languagePath.string().c_str(), err);
+    if (err.error != io::ConfigParseError::ParseError::NoError) {
+        std::cout << "ERROR Could not language config: " << qUtf8Printable(err.errorString) << std::endl;
+    } else {
+        std::cout << "Setting language config..." << std::endl;
+        QMap<QString, QVariant> languageConfig = confData.toMap();
+        m_language = std::make_unique<languages::NanonLanguage>(languageConfig);
+    }
+
+
     connect(this, &NanonEditor::blockCountChanged, this, &NanonEditor::updateLineNumberAreaWidth);
     connect(this, &NanonEditor::updateRequest, this, &NanonEditor::updateLineNumberArea);
     connect(this, &NanonEditor::cursorPositionChanged, this, &NanonEditor::highlightCurrentLine);
@@ -45,10 +59,31 @@ void NanonEditor::keyPressEvent(QKeyEvent *event)
 {
 
     QTextCursor cursor = textCursor();
-    int blockN = cursor.block().blockNumber();
+    QTextBlock block = cursor.block();
     int pos = cursor.positionInBlock();
 
-    QVector<QString> scopes = m_textMateEngine->scopesAtPosition(blockN, pos);
+    QVector<QString> scopes = m_textMateEngine->scopesAtPosition(block, pos);
+
+    languages::EditorContext context{block.text(), cursor, scopes};
+    languages::Edit edits = m_language->handleKeyEvent(context, event);
+
+    if (edits.hasEdits()) {
+        if (edits.removeAfterCursor) {
+            cursor.setPosition(cursor.position() + edits.removeAfterCursor);
+            setTextCursor(cursor);
+        }
+        int toDelete = edits.removeAfterCursor + edits.removeBeforeCursor;
+
+        for (int i = 0; i < toDelete; i++) {
+            cursor.deletePreviousChar();
+        }
+
+        // TODO, idk if need to handle newline by inserting new text blocks
+        cursor.insertText(edits.insertText);
+        cursor.setPosition(cursor.position() + edits.cursorOffset);
+        setTextCursor(cursor);
+        return;
+    }
 
     // Explicitly handle Shift/Meta + Enter so that a new textBlock is inserted.
     if (event->key() == Qt::Key_Return ||

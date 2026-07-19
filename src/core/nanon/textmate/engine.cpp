@@ -2,6 +2,7 @@
 #include "nanon/io/config.hpp"
 #include "nanon/textmate/engine.hpp"
 
+#include <algorithm>
 #include <iostream>
 
 
@@ -83,18 +84,24 @@ QVector<Region> TextMateEngine::parseBlock(int blockNumber, const QString& input
 }
 
 
-QVector<QString> TextMateEngine::scopesAtPosition(int blockNumber, int pos)
+QVector<QString> TextMateEngine::scopesAtPosition(QTextBlock block, int pos)
 {
+    int blockNumber = block.blockNumber();
     if (!m_blockCache.contains(blockNumber)) {
         std::cout << "ERROR: Current block has no cached scopes!" << std::endl;
         return {};
     }
 
+    // The cursor can be placed one position further than the current text length,
+    // in this case the scope should be determined via the last position.
+    int lastPosition = block.text().length() - 1;
+    int targetPosition = std::min(pos, lastPosition);
+
     BlockState blockState = m_blockCache[blockNumber];
     QVector<QString> scopes;
     for (const textmate::Region& r : blockState.regions)
     {
-        if (pos >= r.start && pos < r.start + r.length)
+        if (targetPosition >= r.start && targetPosition < r.start + r.length)
         {
             scopes.push_back(r.scope);
         }

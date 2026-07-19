@@ -1,5 +1,6 @@
 #pragma once
 
+#include "nanon/languages/language.hpp"
 #include "nanon/textmate/engine.hpp"
 #include "nanon/widgets/highlighter.hpp"
 
@@ -25,7 +26,7 @@ public:
     int lineNumberAreaWidth();
 
     // TODO, idk if the main window should be accessing this.
-    QVector<QString> scopesAtPosition(int blockNumber, int pos) { return m_textMateEngine->scopesAtPosition(blockNumber, pos); };
+    QVector<QString> scopesAtPosition(QTextBlock block, int pos) { return m_textMateEngine->scopesAtPosition(block, pos); };
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
@@ -40,6 +41,7 @@ private:
     QWidget *lineNumberArea;
 
     std::unique_ptr<textmate::TextMateEngine> m_textMateEngine;
+    std::unique_ptr<languages::NanonLanguage> m_language;
 
     std::unique_ptr<Highlighter> m_highlighter;
 };

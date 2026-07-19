@@ -3,8 +3,9 @@
 #include "nanon/textmate/grammar.hpp"
 #include "nanon/textmate/rule.hpp"
 
-#include <QtCore/QString>
 #include <QtCore/QRegularExpressionMatch>
+#include <QtCore/QString>
+#include <QtGui/QTextBlock>
 
 #include <unordered_set>
 
@@ -66,7 +67,7 @@ public:
 
     QVector<Region> parseBlock(int blockNumber, const QString& inputText);
 
-    QVector<QString> scopesAtPosition(int blockNumber, int pos);
+    QVector<QString> scopesAtPosition(QTextBlock block, int pos);
 
 private:
     QVector<Context> m_stack;
