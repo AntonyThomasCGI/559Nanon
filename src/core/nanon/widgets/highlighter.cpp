@@ -52,9 +52,11 @@ void Highlighter::highlightBlock(const QString &text)
     for (auto it = regions.rbegin(); it < regions.rend(); ++it)
     {
         textmate::Region region = *it;
-        if (formats.contains(region.scope)) {
-            // Set highlighting.
-            setFormat(region.start, region.length, formats.value(region.scope));
+        for (const auto &[scope, format] : formats.asKeyValueRange()) {
+            if (region.scope.startsWith(scope)) {
+                // Set highlighting.
+                setFormat(region.start, region.length, formats.value(scope));
+            }
         }
     }
 }
@@ -84,6 +86,7 @@ void Highlighter::setHackyHighlighting()
 
     // super hardcoded atm lol.
     // this will eventually read from a json file.
+
     formats["string.quoted.double"] = multiLineFormat;
     formats["string.quoted.single"] = multiLineFormat;
     formats["string.quoted.double.example"] = multiLineFormat;
@@ -115,7 +118,7 @@ void Highlighter::setHackyHighlighting()
 
     formats["meta.function.decorator.python"] = specialFormat;
 
-    formats["string.quoted.docstring.multi.python"] = stringFormat;
+    formats["string.quoted.docstring"] = stringFormat;
 
     formats["constant.numeric.dec.python"] = numberFormat;
 

@@ -6,6 +6,7 @@
 #include <QFont>
 #include <QFontDatabase>
 #include <QShortcut>
+#include <QtGui/QTextDocumentFragment>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QSplitter>
 #include <QtWidgets/QStatusBar>
@@ -137,7 +138,7 @@ CONSTANT = True
 //functools.partial(print, "a test \"print\" example")
 //)"""";
 
-    editor->setPlainText(tempText);
+    //editor->setPlainText(tempText);
 
 }
 
@@ -153,9 +154,14 @@ void NanonWindow::onRunCode()
         return;
     }
 
-    QString content = editor->toPlainText();
-    std::string strContent = content.toStdString();
+    QString content;
+    if (editor->textCursor().hasSelection()) {
+        content = editor->textCursor().selection().toPlainText();
+    } else {
+        content = editor->toPlainText();
+    }
 
+    std::string strContent = content.toStdString();
     interpreter::ExecutionResult result = m_interpreter->executeCode(strContent);
 
     QString resultStdout = QString::fromStdString(result.stdout);

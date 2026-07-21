@@ -78,20 +78,21 @@ void NanonEditor::keyPressEvent(QKeyEvent *event)
             cursor.deletePreviousChar();
         }
 
-        // TODO, idk if need to handle newline by inserting new text blocks
+        // TODO, Convert newlines to text blocks?
+        //QStringList inserts = edits.insertText.split("\n");
+        //bool firstLine = true;
+        //for (auto &insert : inserts) {
+        //    if (!firstLine) {
+        //        cursor.insertBlock();
+        //    }
+        //    cursor.insertText(insert);
+        //    firstLine = false;
+        //}
         cursor.insertText(edits.insertText);
+
         cursor.setPosition(cursor.position() + edits.cursorOffset);
         setTextCursor(cursor);
         return;
-    }
-
-    // Explicitly handle Shift/Meta + Enter so that a new textBlock is inserted.
-    if (event->key() == Qt::Key_Return ||
-        event->key() == Qt::Key_Enter) {
-            if (event->modifiers() & Qt::MetaModifier || event->modifiers() & Qt::ShiftModifier) {
-                textCursor().insertBlock();
-                return;
-            }
     }
 
     QPlainTextEdit::keyPressEvent(event);

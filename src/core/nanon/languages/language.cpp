@@ -54,31 +54,65 @@ void NanonLanguage::setLanguage(QMap<QString, QVariant> languageConfig)
             m_surroundingPairs[first] = second;
         }
     }
+
+    if (languageConfig.contains("onEnterRules")) {
+        QList<QVariant> onEnterRules = languageConfig["onEnterRules"].toList();
+        for (const auto &variant : onEnterRules) {
+            QMap<QString, QVariant> rawRule = variant.toMap();
+            OnEnterRule onEnterRule;
+            if (rawRule.contains("beforeText")) {
+                onEnterRule.beforeText = rawRule["beforeText"].toString();
+            }
+            if (rawRule.contains("afterText")) {
+                onEnterRule.afterText = rawRule["afterText"].toString();
+            }
+            if (rawRule.contains("action")) {
+                QMap<QString, QVariant> rawAction = rawRule["action"].toMap();
+                OnEnterRule::Action action;
+                if (rawAction.contains("appendText")) {
+                    action.appendText = rawAction["appendText"].toString();
+                }
+                if (rawAction.contains("indent")) {
+                    QString rawIndent = rawAction["indent"].toString();
+                    OnEnterRule::IndentType indentType = OnEnterRule::IndentType::NONE;
+                    if (rawIndent == "indent") {
+                        indentType = OnEnterRule::IndentType::INDENT;
+                    } else if (rawIndent == "outdent") {
+                        indentType = OnEnterRule::IndentType::OUTDENT;
+                    }
+                    action.indent = indentType;
+                }
+                onEnterRule.action = action;
+            }
+            m_onEnterRules.push_back(onEnterRule);
+        }
+    }
 }
 
 
 Edit NanonLanguage::handleKeyEvent(EditorContext &context, QKeyEvent *event)
 {
-    Edit edit{0, 0, "", 0};
+    Edit edit;
 
     // TODO, Some of these actions only need to trigger on specific key events.
 
-    if (applyAutoClosingPairEdits(context, event, edit)) { return edit; };
-    if (applySurroundingPairEdits(context, event, edit)) { return edit; };
-    if (applyIndentationMatchEdits(context, event, edit)) { return edit; };
-    if (applyTabsToSpacesEdits(context, event, edit)) { return edit; };
-    if (applyBackspaceIndentEdits(context, event, edit)) { return edit; };
+    applyAutoClosingPairEdits(context, event, edit);
+    applySurroundingPairEdits(context, event, edit);
+    applyIndentationMatchEdits(context, event, edit);
+    applyTabsToSpacesEdits(context, event, edit);
+    applyBackspaceIndentEdits(context, event, edit);
+    applyOnEnterEdits(context, event, edit);
 
     return edit;
 }
 
 
-bool currentScopeIncludesScope(QVector<QString> currentScopes, QVector<QString> scopeList)
+bool currentlyInScope(QVector<QString> currentScopes, QVector<QString> scopeList)
 {
     for (const auto& currentScope : currentScopes) {
         for (const auto &scope : scopeList) {
             if (currentScope.contains(scope)) {
-                return false;
+                return true;
             }
         }
     }
@@ -95,12 +129,8 @@ bool NanonLanguage::applyAutoClosingPairEdits(EditorContext &context, QKeyEvent 
             continue;
         }
 
-        const int pos = context.cursor.positionInBlock();
-        const bool hasNextChar = pos < context.currentLine.length();
-        const bool nextCharacterSame = hasNextChar && context.currentLine[pos] == newKey;
-
         // If the next character already closes the pair, just move the cursor forward.
-        if (newKey == pair.close && nextCharacterSame) {
+        if (newKey == pair.close && context.nextCharacter() == newKey) {
             const int openCount = context.currentLine.count(pair.open);
             const int closeCount = context.currentLine.count(pair.close);
             if (openCount == closeCount) {
@@ -110,9 +140,15 @@ bool NanonLanguage::applyAutoClosingPairEdits(EditorContext &context, QKeyEvent 
         }
 
         if (newKey == pair.open) {
-            if (currentScopeIncludesScope(context.scopes, pair.notInScopes)) {
+            // Only apply auto closing pairs if appearing before these characters
+            if (!m_autoCloseBefore.contains(context.nextCharacter())) {
                 return false;
             }
+            // Skip the specified not-in scopes
+            if (currentlyInScope(context.scopes, pair.notInScopes)) {
+                return false;
+            }
+
             edit.insertText = newKey + pair.close;
             edit.cursorOffset = -1;
             return true;
@@ -135,8 +171,14 @@ bool NanonLanguage::applySurroundingPairEdits(EditorContext &context, QKeyEvent 
 
         QString deleteCharacter = context.currentLine[pos - 1];
         if (m_surroundingPairs.contains(deleteCharacter)) {
-            QString nextCharacter = context.currentLine[pos];
-            if (m_surroundingPairs[deleteCharacter] == nextCharacter) {
+            QString closePair = m_surroundingPairs[deleteCharacter];
+            if (closePair == context.nextCharacter()) {
+                const int openCount = context.currentLine.count(deleteCharacter);
+                const int closeCount = context.currentLine.count(closePair);
+                // If deleting the previous character balances pairs, don't remove the extra pair.
+                if (openCount == closeCount + 1) {
+                    return false;
+                }
                 edit.removeBeforeCursor = 1;
                 edit.removeAfterCursor = 1;
                 return true;
@@ -154,6 +196,9 @@ bool NanonLanguage::applyIndentationMatchEdits(EditorContext &context,  QKeyEven
         if (match.hasMatch()) {
             QString indentation = match.captured(1);
             edit.insertText = "\n" + indentation;
+            return true;
+        } else {
+            edit.insertText = "\n";
             return true;
         }
     }
@@ -180,6 +225,40 @@ bool NanonLanguage::applyBackspaceIndentEdits(EditorContext &context, QKeyEvent 
             edit.removeBeforeCursor = std::min(m_tabWidth, lineLength);
             return true;
         }
+    }
+    return false;
+}
+
+
+bool NanonLanguage::applyOnEnterEdits(EditorContext &context, QKeyEvent *event, Edit &edit)
+{
+    if (event->key() != Qt::Key_Return && event->key() != Qt::Key_Enter) {
+        return false;
+    }
+
+    for (auto &rule : m_onEnterRules) {
+        if (!rule.ruleApplies(context.currentLine, context.cursor.positionInBlock())) {
+            continue;
+        }
+
+        // This code assumes ``applyIndentationMatchEdits`` has already ran and applied
+        // new line and base indentation rules to the edit.
+
+
+        QString indent = QString(m_tabWidth, ' ');
+        if (rule.action.indent == OnEnterRule::IndentType::INDENT) {
+            edit.insertText.append(indent);
+        } else if (
+            rule.action.indent == OnEnterRule::IndentType::OUTDENT
+            && edit.insertText.endsWith(indent)
+        ) {
+            edit.insertText.chop(m_tabWidth);
+        }
+
+        if (rule.action.appendText != "") {
+            edit.insertText.append(rule.action.appendText);
+        }
+        return true;
     }
     return false;
 }
