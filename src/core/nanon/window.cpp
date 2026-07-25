@@ -51,6 +51,8 @@ NanonWindow::NanonWindow(QWidget* parent)
 
     setCentralWidget(splitter);
 
+    m_editor->setFocus();
+
     // Load fonts
     std::filesystem::path fontPath = resourcePath / "fonts";
 
