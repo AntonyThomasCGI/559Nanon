@@ -37,7 +37,7 @@ void TextMateEngine::setGrammarFromFile(QString fileName)
 
     QMap<QString, QVariant> tmMap = tmData.toMap();
 
-    auto grammar = std::make_unique<textmate::Grammar>("my scope", tmMap);
+    auto grammar = std::make_unique<textmate::Grammar>(tmMap);
     setGrammar(std::move(grammar));
 }
 
@@ -112,13 +112,11 @@ QVector<QString> TextMateEngine::scopesAtPosition(QTextBlock block, int pos)
 
 QVector<Region> TextMateEngine::parseLine(const QString& inputText)
 {
-
-    // TODO, idk what the interaction is with "$" matches now
     const QString text = inputText + "\n";
 
-    QVector<Region> regions;
-
     int pos = 0;
+
+    QVector<Region> regions;
 
     while (pos <= text.size())
     {
@@ -182,6 +180,10 @@ QVector<Region> TextMateEngine::parseLine(const QString& inputText)
                        regions);
         }
     }
+
+    // Finally push the grammar scope name as a region
+    Region defaultRegion{m_grammar->scopeName, 0, text.length()};
+    regions.push_back(defaultRegion);
 
     return regions;
 }

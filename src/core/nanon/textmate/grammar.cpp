@@ -7,11 +7,9 @@
 using namespace nanon::textmate;
 
 
-Grammar::Grammar(QString scopeName, QMap<QString, QVariant> rawGrammar)
+Grammar::Grammar(QMap<QString, QVariant> rawGrammar)
 {
-    this->scopeName = scopeName;
-
-    ingestGrammar(rawGrammar);
+    _ingestGrammar(rawGrammar);
 }
 
 
@@ -26,6 +24,11 @@ void Grammar::ingestGrammar(QMap<QString, QVariant> rawGrammar)
 
 void Grammar::_ingestGrammar(QMap<QString, QVariant> rawGrammar)
 {
+    // The global scope name ie; "source.python"
+    if (rawGrammar.contains("scopeName")) {
+        scopeName = rawGrammar["scopeName"].toString();
+    }
+
     // Populate repository
     if (rawGrammar.contains("repository"))
     {

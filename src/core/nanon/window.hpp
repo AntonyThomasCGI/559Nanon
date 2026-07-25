@@ -4,6 +4,7 @@
 #include "nanon/widgets/editor.hpp"
 #include "nanon/widgets/highlighter.hpp"
 
+
 #include <QtCore/QPointer>
 #include <QtCore/QString>
 #include <QtGui/QSyntaxHighlighter>
@@ -31,11 +32,10 @@ public:
 
 private:
     void createStatusBar();
-    //static void setMonospaced(QPlainTextEdit *textEdit);
+    void configurePalette();
 
-	QPlainTextEdit *outputWindow;
-
-    widgets::NanonEditor *editor;
+	std::unique_ptr<QPlainTextEdit> m_outputWindow;
+    std::unique_ptr<widgets::NanonEditor> m_editor;
 
     interpreter::NanonInterpreterBase* m_interpreter = nullptr;
 

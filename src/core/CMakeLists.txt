@@ -10,6 +10,10 @@ add_library(nanon_core SHARED
     nanon/io/socket.hpp
     nanon/languages/language.cpp
     nanon/languages/language.hpp
+    nanon/style/theme_manager.cpp
+    nanon/style/theme_manager.hpp
+    nanon/style/theme.cpp
+    nanon/style/theme.hpp
     nanon/textmate/engine.cpp
     nanon/textmate/engine.hpp
     nanon/textmate/grammar.cpp

@@ -1,5 +1,7 @@
 
 #include "nanon/io/config.hpp"
+#include "nanon/style/theme.hpp"
+#include "nanon/style/theme_manager.hpp"
 #include "nanon/textmate/rule.hpp"
 #include "nanon/window.hpp"
 
@@ -16,26 +18,40 @@
 #include <string>
 
 
+#ifndef RESOURCE_PATH
+#define RESOURCE_PATH = ""
+#endif
+
+
 using namespace nanon;
 
 
 NanonWindow::NanonWindow(QWidget* parent)
 {
     this->setWindowTitle("559 Nanon");
-    this->setStyleSheet("background-color:white;");
+
+    std::filesystem::path resourcePath = RESOURCE_PATH;
+    std::filesystem::path themePath = resourcePath / "themes" / "nanon-theme.json";
+
+    auto& themeManager = style::NanonThemeManager::instance();
+    themeManager.addTheme("Nanon Theme", themePath.c_str());
+    style::NanonTheme* theme = themeManager.theme();
 
     QSplitter *splitter = new QSplitter(Qt::Vertical);
 
-    outputWindow = new QPlainTextEdit;
-    outputWindow->setReadOnly(true);
-    outputWindow->setWordWrapMode(QTextOption::NoWrap);
-    outputWindow->setStyleSheet("background-color:black; color:Gainsboro");
+    m_outputWindow = std::make_unique<QPlainTextEdit>();
+    m_outputWindow->setReadOnly(true);
+    m_outputWindow->setWordWrapMode(QTextOption::NoWrap);
 
-    editor = new widgets::NanonEditor;
-    editor->setWordWrapMode(QTextOption::NoWrap);
+    m_editor = std::make_unique<widgets::NanonEditor>();
+    m_editor->setWordWrapMode(QTextOption::NoWrap);
+
+    splitter->addWidget(m_outputWindow.get());
+    splitter->addWidget(m_editor.get());
+
+    setCentralWidget(splitter);
 
     // Load fonts
-    std::filesystem::path resourcePath = RESOURCE_PATH;
     std::filesystem::path fontPath = resourcePath / "fonts";
 
     std::filesystem::path defaultFont = fontPath / "Courier_Prime" / "CourierPrime-Regular.ttf";
@@ -48,103 +64,78 @@ NanonWindow::NanonWindow(QWidget* parent)
         std::cout << "Loaded font: " << fontFamilies.at(0).toStdString() << std::endl;
         QString fontFamily = fontFamilies.at(0);
         this->setFont(QFont(fontFamily));
-        editor->setFont(QFont(fontFamily));
-        outputWindow->setFont(QFont(fontFamily));
+        m_editor->setFont(QFont(fontFamily));
+        m_outputWindow->setFont(QFont(fontFamily));
     } else {
         std::cerr << "Failed to load font: " << defaultFont.string() << std::endl;
     }
 
-    splitter->addWidget(outputWindow);
-    splitter->addWidget(editor);
-
-    setCentralWidget(splitter);
-
     createStatusBar();
+
+    configurePalette();
 
     QShortcut *shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Return), this);
     connect(shortcut, &QShortcut::activated, this, &NanonWindow::onRunCode);
 
     QShortcut *scopesShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_S), this);
     connect(scopesShortcut, &QShortcut::activated, this, &NanonWindow::onShowScopesAtCursor);
-
-    QString tempText = R""""(# Welcome to 559 Nanon!
-
-import functools
-from contextlib import contextmanager
-
-
-class CoolClass:
-    def __init__(self, x):
-        self.x = x
-
-
-print('this is a \'great\' test')
-
-
-@contextmanager
-def test_manager(resource):
-    try:
-        yield "Hi"
-    finally:
-        print('cleanup')
-
-
-def fn(a, b, limit=10, count=0):
-    """This is an example fibonacci function.
-
-    Args:
-        a (int): A number.
-        b (int): B number.
-    """
-    if count >= limit:
-        return
-
-    c = a + b
-    print(f"{c} (iteration={count + 1})")
-    fn(b, c, limit=limit, count=count + 1)
-
-
-with test_manager(None):
-    pass
-
-fn(0, 1)
-
-i = 5
-while i <= 10:
-    i += 1
-
-
-CONSTANT = True
-
-
-
-
-)"""";
-
-//    tempText = R""""(import functools
-//from contextlib import contextmanager
-//
-//
-//class CoolClass:
-//    def __init__(self, x):
-//        self.x = x
-//)"""";
-
-
-    //tempText = "from contextlib import ...";
-
-    //tempText = "print('this test', why=True)";
-//    tempText = R""""(import functools
-//functools.partial(print, "a test \"print\" example")
-//)"""";
-
-    //editor->setPlainText(tempText);
-
 }
 
 
 NanonWindow::~NanonWindow()
 {}
+
+
+void NanonWindow::configurePalette()
+{
+    style::NanonTheme *theme = style::NanonThemeManager::instance().theme();
+    if (theme == nullptr) {
+        return;
+    }
+
+    QPalette outputPalette;
+
+    outputPalette.setColor(
+        QPalette::Highlight,
+        QColor(theme->getColor("outputSelection.background"))
+    );
+    outputPalette.setColor(
+        QPalette::HighlightedText,
+        QColor(theme->getColor("output.foreground"))
+    );
+    outputPalette.setColor(
+        QPalette::Text,
+        QColor(theme->getColor("output.foreground"))
+    );
+    outputPalette.setColor(
+        QPalette::Base,
+        QColor(theme->getColor("output.background"))
+    );
+
+    m_outputWindow->setPalette(outputPalette);
+
+    QPalette statusPalette;
+
+    statusPalette.setColor(
+        QPalette::Window,
+        QColor(theme->getColor("statusBar.background"))
+    );
+    statusPalette.setColor(
+        QPalette::WindowText,
+        QColor(theme->getColor("statusBar.foreground"))
+    );
+
+    statusBar()->setPalette(statusPalette);
+
+    QPalette windowPalette;
+
+    windowPalette.setColor(
+        QPalette::Window,
+        QColor(theme->getColor("window.background"))
+    );
+
+    setPalette(windowPalette);
+}
 
 
 void NanonWindow::onRunCode()
@@ -155,10 +146,10 @@ void NanonWindow::onRunCode()
     }
 
     QString content;
-    if (editor->textCursor().hasSelection()) {
-        content = editor->textCursor().selection().toPlainText();
+    if (m_editor->textCursor().hasSelection()) {
+        content = m_editor->textCursor().selection().toPlainText();
     } else {
-        content = editor->toPlainText();
+        content = m_editor->toPlainText();
     }
 
     std::string strContent = content.toStdString();
@@ -173,7 +164,7 @@ void NanonWindow::onRunCode()
 
 void NanonWindow::onShowScopesAtCursor()
 {
-    QTextCursor cursor = editor->textCursor();
+    QTextCursor cursor = m_editor->textCursor();
     QTextBlock currentBlock = cursor.block();
     if (!currentBlock.isValid()) {
         return;
@@ -181,9 +172,9 @@ void NanonWindow::onShowScopesAtCursor()
 
     int pos = cursor.positionInBlock();
 
-    QVector<QString> scopes = editor->scopesAtPosition(currentBlock, pos);
+    QVector<QString> scopes = m_editor->scopesAtPosition(currentBlock, pos);
 
-    const QPoint cursorCoordinates = editor->cursorRect().bottomRight();
+    const QPoint cursorCoordinates = m_editor->cursorRect().bottomRight();
     QMenu menu("Scopes", this);
     bool hasScope = false;
     for (auto &scope : scopes) {
@@ -194,8 +185,7 @@ void NanonWindow::onShowScopesAtCursor()
     if (!hasScope) {
         menu.addAction("Not in a scope");
     }
-    menu.setStyleSheet("background-color:white;color:black;");
-    menu.exec(editor->viewport()->mapToGlobal(cursorCoordinates));
+    menu.exec(m_editor->viewport()->mapToGlobal(cursorCoordinates));
 }
 
 
@@ -209,10 +199,10 @@ void NanonWindow::createStatusBar()
 void NanonWindow::appendOutput(QString text)
 {
     // Append to end of output
-    this->outputWindow->moveCursor (QTextCursor::End);
-    this->outputWindow->insertPlainText(text);
+    m_outputWindow->moveCursor (QTextCursor::End);
+    m_outputWindow->insertPlainText(text);
     // Force re-scroll to the bottom
-    this->outputWindow->moveCursor (QTextCursor::End);
+    m_outputWindow->moveCursor (QTextCursor::End);
 }
 
 

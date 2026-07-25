@@ -1,5 +1,6 @@
 
 #include "nanon/io/config.hpp"
+#include "nanon/style/theme_manager.hpp"
 #include "nanon/widgets/highlighter.hpp"
 
 #include <QtGui/QTextBlock>
@@ -15,8 +16,7 @@ using namespace nanon::widgets;
 Highlighter::Highlighter(QTextDocument *parent)
     : QSyntaxHighlighter(parent)
 {
-
-    setHackyHighlighting();
+    //setHackyHighlighting();
 }
 
 Highlighter::Highlighter(QTextDocument *parent, textmate::TextMateEngine *engine)
@@ -49,16 +49,41 @@ void Highlighter::highlightBlock(const QString &text)
 
     QVector<textmate::Region> regions = m_textMateEngine->parseBlock(blockN, text);
 
-    for (auto it = regions.rbegin(); it < regions.rend(); ++it)
-    {
-        textmate::Region region = *it;
-        for (const auto &[scope, format] : formats.asKeyValueRange()) {
-            if (region.scope.startsWith(scope)) {
-                // Set highlighting.
-                setFormat(region.start, region.length, formats.value(scope));
+    style::NanonTheme* theme = style::NanonThemeManager::instance().theme();
+
+    std::cout << "==================================================" << std::endl;
+    if (theme != nullptr) {
+        for (auto it = regions.rbegin(); it < regions.rend(); ++it) {
+            textmate::Region region = *it;
+            std::cout << region.scope.toStdString() << std::endl;
+            for (const auto &tokenColor : theme->tokenColors()) {
+                //if (tokenColor.scopes.isEmpty()) {
+                //    setFormat(region.start, region.length, tokenColor.format);
+                //    continue;
+                //}
+                for (const auto &tokenScope : tokenColor.scopes) {
+                    if (region.scope.startsWith(tokenScope)) {
+                        std::cout << "setting format scope: " << std::to_string(region.start) << ", " <<
+                            std::to_string(region.length) << ", " << tokenColor.format.foreground().color().name().toStdString() << ", format key: " <<
+                            tokenScope.toStdString() << std::endl;
+                        setFormat(region.start, region.length, tokenColor.format);
+                        break;
+                    }
+                }
             }
         }
     }
+
+    //for (auto it = regions.rbegin(); it < regions.rend(); ++it)
+    //{
+    //    textmate::Region region = *it;
+    //    for (const auto &[scope, format] : formats.asKeyValueRange()) {
+    //        if (region.scope.startsWith(scope)) {
+    //            // Set highlighting.
+    //            setFormat(region.start, region.length, formats.value(scope));
+    //        }
+    //    }
+    //}
 }
 
 

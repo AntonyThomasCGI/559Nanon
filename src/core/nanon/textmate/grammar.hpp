@@ -16,7 +16,7 @@ namespace textmate {
 class Grammar : public RuleGroup
 {
 public:
-    Grammar(QString scopeName, QMap<QString, QVariant> rawGrammar);
+    Grammar(QMap<QString, QVariant> rawGrammar);
     virtual ~Grammar();
 
     RuleGroup root;

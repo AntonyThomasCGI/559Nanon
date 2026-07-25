@@ -1,5 +1,7 @@
 
 #include "nanon/io/config.hpp"
+#include "nanon/style/theme_manager.hpp"
+#include "nanon/style/theme.hpp"
 #include "nanon/widgets/editor.hpp"
 
 #include <QtGui/QPainter>
@@ -19,7 +21,6 @@ using namespace nanon::widgets;
 
 NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
 {
-    this->setStyleSheet("background-color:black; color:Gainsboro");
     lineNumberArea = new LineNumberArea(this);
 
     m_textMateEngine = std::make_unique<textmate::TextMateEngine>();
@@ -43,6 +44,7 @@ NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
         m_language = std::make_unique<languages::NanonLanguage>(languageConfig);
     }
 
+    configurePalette();
 
     connect(this, &NanonEditor::blockCountChanged, this, &NanonEditor::updateLineNumberAreaWidth);
     connect(this, &NanonEditor::updateRequest, this, &NanonEditor::updateLineNumberArea);
@@ -52,6 +54,38 @@ NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
     highlightCurrentLine();
 
     m_highlighter = std::make_unique<Highlighter>(document(), m_textMateEngine.get());
+}
+
+
+void NanonEditor::configurePalette()
+{
+    QPalette palette;
+
+    style::NanonTheme *theme = style::NanonThemeManager::instance().theme();
+
+    if (theme == nullptr) {
+        std::cout << "WARNING no theme set" << std::endl;
+        return;
+    }
+
+    palette.setColor(
+        QPalette::Highlight,
+        QColor(theme->getColor("editorSelection.background"))
+    );
+    palette.setColor(
+        QPalette::HighlightedText,
+        QColor(theme->getColor("editor.foreground"))
+    );
+    palette.setColor(
+        QPalette::Text,
+        QColor(theme->getColor("editor.foreground"))
+    );
+    palette.setColor(
+        QPalette::Base,
+        QColor(theme->getColor("editor.background"))
+    );
+
+    setPalette(palette);
 }
 
 
@@ -151,7 +185,8 @@ void NanonEditor::highlightCurrentLine()
     if (!isReadOnly()) {
         QTextEdit::ExtraSelection selection;
 
-        QColor lineColor = QColor(Qt::darkGray).darker(500);
+        style::NanonTheme *theme = style::NanonThemeManager::instance().theme();
+        QColor lineColor = QColor(theme->getColor("editor.lineHighlightBackground"));
 
         selection.format.setBackground(lineColor);
         selection.format.setProperty(QTextFormat::FullWidthSelection, true);
@@ -165,9 +200,19 @@ void NanonEditor::highlightCurrentLine()
 
 void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
 {
+    style::NanonTheme *theme = style::NanonThemeManager::instance().theme();
+
     QPainter painter(lineNumberArea);
-    QColor rectColor = QColor(Qt::black);
-    painter.fillRect(event->rect(), rectColor);
+    //QColor bgColor = QColor(Qt::black);
+    //QColor rulerColor = QColor(48, 25, 52, 255);
+    //QColor lineNumberColor = QColor(191, 255, 0, 255)
+
+    QColor bgColor = theme->getColor("editor.background");
+    QColor lineNumberColor = theme->getColor("editorLineNumber.foreground");
+    QColor lineNumberSpecialColor = theme->getColor("editorLineNumberSpecial.foreground");
+    QColor rulerColor = theme->getColor("editorRuler.foreground");
+
+    painter.fillRect(event->rect(), bgColor);
 
     QTextBlock block = firstVisibleBlock();
     int blockNumber = block.blockNumber();
@@ -182,35 +227,31 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
     while (block.isValid() && top <= event->rect().bottom()) {
         if (block.isVisible() && bottom >= event->rect().top()) {
 
-            //blockBoundingRect(block).height()
-
-            QColor darkPurple = QColor(48, 25, 52, 255);
-            QPen drawPen(darkPurple, 2);
+            QPen drawPen(rulerColor, 2);
             int yValue = top + qRound(fontMetrics().height() / 2.0);
-            QPoint leftPnt(10, yValue);
-            QPoint rightPnt(qRound(lineNumberArea->width() / 1.5), yValue);
+            QPoint leftPnt(5, yValue);
+            QPoint rightPnt(qRound(lineNumberArea->width() / 3.0), yValue);
 
             painter.setPen(drawPen);
             painter.setFont(font);
             painter.drawLine(leftPnt, rightPnt);
 
-            int width = qRound(lineNumberArea->width() / 6.0);
-            QPoint upperLeftPnt(width, yValue - 6);
-            QPoint upperRightPnt(width + width, yValue - 6);
+            int width = qRound(lineNumberArea->width() / 7.0);
+            QPoint upperLeftPnt(5, yValue - 7);
+            QPoint upperRightPnt(5 + width, yValue - 7);
             painter.drawLine(upperLeftPnt, upperRightPnt);
 
             if ((blockNumber + 1) % 10 == 0) {
-                painter.setPen(QColor(191, 255, 0, 255));
+                painter.setPen(lineNumberSpecialColor);
                 QString number = QString::number(blockNumber + 1);
                 for (int i = number.length() - 3; i > 0; i = i - 3)
                 {
                     number.insert(i, " ");
                 }
-                // std::cout << qUtf8Printable(modPart) << std::endl;
                 painter.drawText(0, top, lineNumberArea->width() -13, fontMetrics().height(),
                              Qt::AlignRight, number);
             } else {
-                painter.setPen(Qt::lightGray);
+                painter.setPen(lineNumberColor);
                 QString number = QString::number((blockNumber + 1) % 10);
                 painter.translate(lineNumberArea->width() - 13, 0);
                 painter.rotate(90);

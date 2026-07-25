@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nanon/languages/language.hpp"
+#include "nanon/style/theme.hpp"
 #include "nanon/textmate/engine.hpp"
 #include "nanon/widgets/highlighter.hpp"
 
@@ -29,6 +30,7 @@ public:
     QVector<QString> scopesAtPosition(QTextBlock block, int pos) { return m_textMateEngine->scopesAtPosition(block, pos); };
 
 protected:
+    //void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
 
@@ -36,6 +38,8 @@ private slots:
     void updateLineNumberAreaWidth(int newBlockCount);
     void highlightCurrentLine();
     void updateLineNumberArea(const QRect &rect, int dy);
+
+    void configurePalette();
 
 private:
     QWidget *lineNumberArea;

@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "nanon/style/theme.hpp"
 #include "nanon/textmate/engine.hpp"
 #include "nanon/textmate/grammar.hpp"
 
@@ -42,6 +43,7 @@ private:
     ScopeBlockData* previousBlockUserData() const;
 
     textmate::TextMateEngine *m_textMateEngine;
+    style::NanonTheme *m_theme;
 };
 
 
