@@ -180,20 +180,23 @@ void NanonEditor::updateLineNumberArea(const QRect &rect, int dy)
 
 void NanonEditor::highlightCurrentLine()
 {
+    if (textCursor().hasSelection() || isReadOnly()) {
+        setExtraSelections(QList<QTextEdit::ExtraSelection>{});
+        return;
+    }
+
     QList<QTextEdit::ExtraSelection> extraSelections;
 
-    if (!isReadOnly()) {
-        QTextEdit::ExtraSelection selection;
+    QTextEdit::ExtraSelection selection;
 
-        style::NanonTheme *theme = style::NanonThemeManager::instance().theme();
-        QColor lineColor = QColor(theme->getColor("editor.lineHighlightBackground"));
+    style::NanonTheme *theme = style::NanonThemeManager::instance().theme();
+    QColor lineColor = QColor(theme->getColor("editor.lineHighlightBackground"));
 
-        selection.format.setBackground(lineColor);
-        selection.format.setProperty(QTextFormat::FullWidthSelection, true);
-        selection.cursor = textCursor();
-        selection.cursor.clearSelection();
-        extraSelections.append(selection);
-    }
+    selection.format.setBackground(lineColor);
+    selection.format.setProperty(QTextFormat::FullWidthSelection, true);
+    selection.cursor = textCursor();
+    selection.cursor.clearSelection();
+    extraSelections.append(selection);
 
     setExtraSelections(extraSelections);
 }
