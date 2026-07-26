@@ -7,6 +7,7 @@
 
 #include <QFont>
 #include <QFontDatabase>
+#include <QIcon>
 #include <QShortcut>
 #include <QtGui/QTextDocumentFragment>
 #include <QtWidgets/QMenu>
@@ -73,6 +74,11 @@ NanonWindow::NanonWindow(QWidget* parent)
     } else {
         std::cerr << "Failed to load font: " << defaultFont.string() << std::endl;
     }
+
+    // Load icons
+    std::filesystem::path mainIconPath = resourcePath / "icons" / "nanon_icon_1024.png";
+
+    setWindowIcon(QIcon(mainIconPath.c_str()));
 
     createStatusBar();
 
