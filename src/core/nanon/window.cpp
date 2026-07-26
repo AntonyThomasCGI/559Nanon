@@ -65,7 +65,9 @@ NanonWindow::NanonWindow(QWidget* parent)
     if (!fontFamilies.empty()) {
         std::cout << "Loaded font: " << fontFamilies.at(0).toStdString() << std::endl;
         QString fontFamily = fontFamilies.at(0);
-        this->setFont(QFont(fontFamily));
+        QFont font = QFont(fontFamily);
+        font.setPointSize(14);
+        this->setFont(font);
         m_editor->setFont(QFont(fontFamily));
         m_outputWindow->setFont(QFont(fontFamily));
     } else {

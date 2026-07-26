@@ -218,12 +218,18 @@ bool NanonLanguage::applyTabsToSpacesEdits(EditorContext &context, QKeyEvent *ev
 
 bool NanonLanguage::applyBackspaceIndentEdits(EditorContext &context, QKeyEvent *event, Edit &edit)
 {
-    if (event->key() == Qt::Key_Backspace) {
+    if (event->key() == Qt::Key_Backspace && !context.cursor.hasSelection()) {
         auto match = m_indentationRegex.match(context.currentLine);
-        if (match.hasMatch() && match.capturedLength(0) == context.currentLine.length()) {
-            int lineLength = static_cast<int>(match.capturedLength(0));
-            edit.removeBeforeCursor = std::min(m_tabWidth, lineLength);
-            return true;
+        if (match.hasMatch()) {
+            int length = match.capturedLength(0);
+            std::cout << "matched length: " << std::to_string(length) << std::endl;
+            int pos = context.cursor.positionInBlock();
+            std::cout << "cursor pos: " << std::to_string(pos) << std::endl;
+            if (length >= pos) {
+                int lineLength = static_cast<int>(match.capturedLength(0));
+                edit.removeBeforeCursor = std::min(m_tabWidth, lineLength);
+                return true;
+            }
         }
     }
     return false;

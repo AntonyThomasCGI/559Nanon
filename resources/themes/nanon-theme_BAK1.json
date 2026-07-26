@@ -39,7 +39,7 @@
             "name":"String",
             "scope":"string",
             "settings":{
-                "foreground":"#3F9E82"
+                "foreground":"#494E91"
             }
         },
         {
@@ -113,7 +113,7 @@
                 "punctuation.definition.arguments"
             ],
             "settings": {
-                "foreground": "#1196A8"
+                "foreground": "#11A8A8"
             }
         },
         {

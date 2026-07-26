@@ -102,6 +102,8 @@ void NanonEditor::keyPressEvent(QKeyEvent *event)
     languages::Edit edits = m_language->handleKeyEvent(context, event);
 
     if (edits.hasEdits()) {
+        cursor.beginEditBlock();
+
         if (edits.removeAfterCursor) {
             cursor.setPosition(cursor.position() + edits.removeAfterCursor);
             setTextCursor(cursor);
@@ -126,6 +128,8 @@ void NanonEditor::keyPressEvent(QKeyEvent *event)
 
         cursor.setPosition(cursor.position() + edits.cursorOffset);
         setTextCursor(cursor);
+
+        cursor.endEditBlock();
         return;
     }
 
