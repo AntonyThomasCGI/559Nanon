@@ -1,4 +1,4 @@
-#include "nanon/languages/language.hpp"
+#include "nanon/edits/language.hpp"
 
 #include <QtCore/QList>
 #include <QtCore/QMap>
@@ -9,7 +9,7 @@
 #include <string>
 
 
-using namespace nanon::languages;
+using namespace nanon::edits;
 
 
 
@@ -222,9 +222,7 @@ bool NanonLanguage::applyBackspaceIndentEdits(EditorContext &context, QKeyEvent 
         auto match = m_indentationRegex.match(context.currentLine);
         if (match.hasMatch()) {
             int length = match.capturedLength(0);
-            std::cout << "matched length: " << std::to_string(length) << std::endl;
             int pos = context.cursor.positionInBlock();
-            std::cout << "cursor pos: " << std::to_string(pos) << std::endl;
             if (length >= pos) {
                 int lineLength = static_cast<int>(match.capturedLength(0));
                 edit.removeBeforeCursor = std::min(m_tabWidth, lineLength);

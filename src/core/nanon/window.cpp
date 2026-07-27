@@ -32,7 +32,7 @@ NanonWindow::NanonWindow(QWidget* parent)
     this->setWindowTitle("559 Nanon");
 
     std::filesystem::path resourcePath = RESOURCE_PATH;
-    std::filesystem::path themePath = resourcePath / "themes" / "nanon-theme.json";
+    std::filesystem::path themePath = resourcePath / "themes" / "nanon-dark.json";
 
     auto& themeManager = style::NanonThemeManager::instance();
     themeManager.addTheme("Nanon Theme", themePath.c_str());

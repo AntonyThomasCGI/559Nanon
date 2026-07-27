@@ -41,7 +41,7 @@ NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
     } else {
         std::cout << "Setting language config..." << std::endl;
         QMap<QString, QVariant> languageConfig = confData.toMap();
-        m_language = std::make_unique<languages::NanonLanguage>(languageConfig);
+        m_language = std::make_unique<edits::NanonLanguage>(languageConfig);
     }
 
     configurePalette();
@@ -98,24 +98,24 @@ void NanonEditor::keyPressEvent(QKeyEvent *event)
 
     QVector<QString> scopes = m_textMateEngine->scopesAtPosition(block, pos);
 
-    languages::EditorContext context{block.text(), cursor, scopes};
-    languages::Edit edits = m_language->handleKeyEvent(context, event);
+    edits::EditorContext context{block.text(), cursor, scopes};
+    edits::Edit edit = m_language->handleKeyEvent(context, event);
 
-    if (edits.hasEdits()) {
+    if (edit.hasEdits()) {
         cursor.beginEditBlock();
 
-        if (edits.removeAfterCursor) {
-            cursor.setPosition(cursor.position() + edits.removeAfterCursor);
+        if (edit.removeAfterCursor) {
+            cursor.setPosition(cursor.position() + edit.removeAfterCursor);
             setTextCursor(cursor);
         }
-        int toDelete = edits.removeAfterCursor + edits.removeBeforeCursor;
+        int toDelete = edit.removeAfterCursor + edit.removeBeforeCursor;
 
         for (int i = 0; i < toDelete; i++) {
             cursor.deletePreviousChar();
         }
 
         // TODO, Convert newlines to text blocks?
-        //QStringList inserts = edits.insertText.split("\n");
+        //QStringList inserts = edit.insertText.split("\n");
         //bool firstLine = true;
         //for (auto &insert : inserts) {
         //    if (!firstLine) {
@@ -124,9 +124,9 @@ void NanonEditor::keyPressEvent(QKeyEvent *event)
         //    cursor.insertText(insert);
         //    firstLine = false;
         //}
-        cursor.insertText(edits.insertText);
+        cursor.insertText(edit.insertText);
 
-        cursor.setPosition(cursor.position() + edits.cursorOffset);
+        cursor.setPosition(cursor.position() + edit.cursorOffset);
         setTextCursor(cursor);
 
         cursor.endEditBlock();

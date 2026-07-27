@@ -1,6 +1,6 @@
 #pragma once
 
-#include "nanon/languages/language.hpp"
+#include "nanon/edits/language.hpp"
 #include "nanon/style/theme.hpp"
 #include "nanon/textmate/engine.hpp"
 #include "nanon/widgets/highlighter.hpp"
@@ -45,7 +45,7 @@ private:
     QWidget *lineNumberArea;
 
     std::unique_ptr<textmate::TextMateEngine> m_textMateEngine;
-    std::unique_ptr<languages::NanonLanguage> m_language;
+    std::unique_ptr<edits::NanonLanguage> m_language;
 
     std::unique_ptr<Highlighter> m_highlighter;
 };

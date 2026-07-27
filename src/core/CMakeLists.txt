@@ -8,8 +8,9 @@ add_library(nanon_core SHARED
     nanon/io/config.cpp
     nanon/io/config.hpp
     nanon/io/socket.hpp
-    nanon/languages/language.cpp
-    nanon/languages/language.hpp
+    nanon/edits/edit.hpp
+    nanon/edits/language.cpp
+    nanon/edits/language.hpp
     nanon/style/theme_manager.cpp
     nanon/style/theme_manager.hpp
     nanon/style/theme.cpp

@@ -1,14 +1,17 @@
+"""A test script that does nothing"""
 
 import re
 
 from maya import cmds
 
+
+# a comment
 sel = cmds.ls(sl=True)
 
 
 class Test:
     """A test class"""
-    def __init__(self, x, y):
+    def __init__(self, x=1, y=2):
         self.x = x
         self.y = y
 
@@ -17,14 +20,11 @@ class Test:
         return self.x + self.y
 
 
-# a comment
-
-reg = re.compile(r"$|\btest\b")
-
-
 def a_fn():
     return "test"
 
+
+reg = re.compile(r"$|\btest\b")
 
 t = Test(2, 3)
 t.x

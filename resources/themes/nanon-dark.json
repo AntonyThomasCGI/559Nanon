@@ -1,5 +1,5 @@
 {
-    "name":"Nanon",
+    "name":"Nanon Dark",
     "tokenColors":
     [
         {
@@ -39,7 +39,7 @@
             "name":"String",
             "scope":"string",
             "settings":{
-                "foreground":"#494E91"
+                "foreground":"#3F9E82"
             }
         },
         {
@@ -113,7 +113,7 @@
                 "punctuation.definition.arguments"
             ],
             "settings": {
-                "foreground": "#11A8A8"
+                "foreground": "#1196A8"
             }
         },
         {
