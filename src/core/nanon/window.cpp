@@ -3,12 +3,16 @@
 #include "nanon/style/theme.hpp"
 #include "nanon/style/theme_manager.hpp"
 #include "nanon/textmate/rule.hpp"
+#include "nanon/widgets/search_menu.hpp"
 #include "nanon/window.hpp"
 
+#include <QtGui/QStandardItemModel>
+#include <QFile>
 #include <QFont>
 #include <QFontDatabase>
 #include <QIcon>
 #include <QShortcut>
+#include <QStyle>
 #include <QtGui/QTextDocumentFragment>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QSplitter>
@@ -32,20 +36,19 @@ NanonWindow::NanonWindow(QWidget* parent)
     this->setWindowTitle("559 Nanon");
 
     std::filesystem::path resourcePath = RESOURCE_PATH;
-    std::filesystem::path themePath = resourcePath / "themes" / "nanon-dark.json";
 
-    auto& themeManager = style::NanonThemeManager::instance();
-    themeManager.addTheme("Nanon Theme", themePath.c_str());
-    style::NanonTheme* theme = themeManager.theme();
+    m_session = std::make_unique<NanonSession>();
 
     QSplitter *splitter = new QSplitter(Qt::Vertical);
 
     m_outputWindow = std::make_unique<QPlainTextEdit>();
     m_outputWindow->setReadOnly(true);
     m_outputWindow->setWordWrapMode(QTextOption::NoWrap);
+    m_outputWindow->setFrameShape(QFrame::NoFrame);
 
-    m_editor = std::make_unique<widgets::NanonEditor>();
+    m_editor = std::make_unique<widgets::NanonEditor>(m_session.get());
     m_editor->setWordWrapMode(QTextOption::NoWrap);
+    m_editor->setFrameShape(QFrame::NoFrame);
 
     splitter->addWidget(m_outputWindow.get());
     splitter->addWidget(m_editor.get());
@@ -84,11 +87,16 @@ NanonWindow::NanonWindow(QWidget* parent)
 
     configurePalette();
 
+    connect(m_session.get(), &NanonSession::themeChanged, this, &NanonWindow::configurePalette);
+
     QShortcut *shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Return), this);
     connect(shortcut, &QShortcut::activated, this, &NanonWindow::onRunCode);
 
     QShortcut *scopesShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_S), this);
     connect(scopesShortcut, &QShortcut::activated, this, &NanonWindow::onShowScopesAtCursor);
+
+    QShortcut *showAllCommands = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_P), this);
+    connect(showAllCommands, &QShortcut::activated, this, &NanonWindow::onShowAllCommands);
 }
 
 
@@ -98,7 +106,8 @@ NanonWindow::~NanonWindow()
 
 void NanonWindow::configurePalette()
 {
-    style::NanonTheme *theme = style::NanonThemeManager::instance().theme();
+
+    auto theme = m_session->currentTheme();
     if (theme == nullptr) {
         return;
     }
@@ -190,7 +199,6 @@ void NanonWindow::onShowScopesAtCursor()
     for (auto &scope : scopes) {
         menu.addAction(scope);
         hasScope = true;
-        // std::cout << qUtf8Printable(scope.name) << " " << std::to_string(scope.startIndex) << " " << std::to_string(scope.endIndex) << std::endl;
     }
     if (!hasScope) {
         menu.addAction("Not in a scope");
@@ -198,6 +206,40 @@ void NanonWindow::onShowScopesAtCursor()
     menu.exec(m_editor->viewport()->mapToGlobal(cursorCoordinates));
 }
 
+
+void NanonWindow::onShowAllCommands()
+{
+    QStandardItemModel *actionModel = new QStandardItemModel();
+
+    QAction *changeTheme = new QAction("Set Color Theme", this);
+    connect(changeTheme, &QAction::triggered, this, &NanonWindow::printHI);
+    QStandardItem *changeThemeItem = new QStandardItem(changeTheme->text());
+    changeThemeItem->setData(QVariant::fromValue(changeTheme), Qt::UserRole);
+
+    QAction *showScopes = new QAction("Show Textmate Scopes", this);
+    connect(showScopes, &QAction::triggered, this, &NanonWindow::onShowScopesAtCursor);
+    QStandardItem *showScopesItem = new QStandardItem(showScopes->text());
+    showScopesItem->setData(QVariant::fromValue(showScopes), Qt::UserRole);
+
+    actionModel->appendRow(changeThemeItem);
+    actionModel->appendRow(showScopesItem);
+
+    widgets::SearchMenu *menu = new widgets::SearchMenu(actionModel);
+
+    QPoint widgetCenter = rect().center();
+    QPoint topCenter = QPoint(widgetCenter.x(), rect().top());
+    QPoint globalTopCenter = mapToGlobal(topCenter);
+    globalTopCenter.rx() -= menu->sizeHint().width() / 2;
+
+    menu->exec(globalTopCenter);
+
+    menu->deleteLater();
+}
+
+void NanonWindow::printHI()
+{
+    std::cout << "HI" << std::endl;
+}
 
 
 void NanonWindow::createStatusBar()
@@ -220,4 +262,3 @@ void NanonWindow::setInterpreter(interpreter::NanonInterpreterBase* interpreter)
 {
     m_interpreter = interpreter;
 }
-

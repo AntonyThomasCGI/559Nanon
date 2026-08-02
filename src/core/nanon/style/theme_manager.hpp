@@ -5,6 +5,8 @@
 #include "QtCore/QMap"
 #include "QtCore/QString"
 
+#include <filesystem>
+
 
 namespace nanon {
 namespace style {
@@ -22,11 +24,23 @@ public:
         return instance;
     }
 
+    // TODO, any set methods here don't update session :thinking:
+
     NanonTheme* theme();
+    NanonTheme* defaultTheme() { return &m_availableThemes["Solarized Light"]; };
+
+    NanonTheme* getThemeByName(QString themeName) {
+        if (!m_availableThemes.contains(themeName)) {
+            return nullptr;
+        }
+        return &m_availableThemes[themeName];
+    }
+
     void setTheme(NanonTheme *theme);
     void setThemeByName(QString themeName);
 
-    void addTheme(QString name, QString path);
+    void loadTheme(QString path);
+    void collectAvailableThemes(std::filesystem::path themePath);
 
 
 private:

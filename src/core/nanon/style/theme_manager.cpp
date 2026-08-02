@@ -5,6 +5,8 @@
 #include <sstream>
 #include <string>
 
+#include <iostream>
+
 
 using namespace nanon::style;
 
@@ -33,12 +35,27 @@ void NanonThemeManager::setThemeByName(QString themeName)
 }
 
 
-void NanonThemeManager::addTheme(QString name, QString path)
+void NanonThemeManager::loadTheme(QString path)
 {
-    NanonTheme& theme = m_availableThemes[name];
+    NanonTheme theme;
     theme.loadFromFile(path);
-    if (m_theme == nullptr) {
+    m_availableThemes[theme.getName()] = theme;
+}
 
-        m_theme = &theme;
+
+void NanonThemeManager::collectAvailableThemes(std::filesystem::path themePath)
+{
+    if (!std::filesystem::exists(themePath)) {
+        std::cerr << "Theme path does not exist: " << themePath.string() << std::endl;
+        return;
     }
+
+    for (const auto& entry : std::filesystem::directory_iterator(themePath)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".json") {
+            loadTheme(QString::fromStdString(entry.path().string()));
+        }
+    }
+
+    m_theme = defaultTheme();
+
 }

@@ -64,7 +64,22 @@ class Worker:
             tree = ast.parse(code, mode="exec")
         except SyntaxError:
             return False
-        return len(tree.body) == 1 and isinstance(tree.body[-1], ast.Expr)
+
+        if len(tree.body) > 1:
+            return False
+
+        node = tree.body[-1]
+        if not isinstance(node, ast.Expr):
+            return False
+
+        if (
+            isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Name)
+            and node.value.func.id == "print"
+        ):
+            return False
+
+        return True
 
     def _handle(self):
         stdout = SocketWriter("stdout", self.send)

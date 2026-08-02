@@ -16,14 +16,6 @@ namespace nanon {
 namespace widgets {
 
 
-class ScopeBlockData : public QTextBlockUserData
-{
-    // Q_OBJECT
-
-public:
-    QVector<textmate::Region> regions;
-};
-
 
 class Highlighter : public QSyntaxHighlighter
 {
@@ -37,10 +29,7 @@ protected:
     void highlightBlock(const QString &text);
 
 private:
-    void setHackyHighlighting();
     QMap<QString, QTextCharFormat> formats;
-
-    ScopeBlockData* previousBlockUserData() const;
 
     textmate::TextMateEngine *m_textMateEngine;
     style::NanonTheme *m_theme;

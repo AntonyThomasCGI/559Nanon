@@ -2,6 +2,8 @@
 include_directories(external/nlohmann/json)
 
 add_library(nanon_core SHARED
+    nanon/commands/command.hpp
+    nanon/commands/registry.hpp
     nanon/interpreter/base.hpp
     nanon/interpreter/python.cpp
     nanon/interpreter/python.hpp
@@ -25,8 +27,12 @@ add_library(nanon_core SHARED
     nanon/widgets/editor.hpp
     nanon/widgets/highlighter.cpp
     nanon/widgets/highlighter.hpp
+    nanon/widgets/search_menu.cpp
+    nanon/widgets/search_menu.hpp
     nanon/window.cpp
     nanon/window.hpp
+    nanon/session.cpp
+    nanon/session.hpp
 )
 
 target_link_libraries(nanon_core PUBLIC Qt6::Core Qt6::Widgets nlohmann_json)
@@ -34,11 +40,28 @@ target_link_libraries(nanon_core PUBLIC Qt6::Core Qt6::Widgets nlohmann_json)
 target_include_directories(nanon_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 
+
+add_custom_command(
+    TARGET nanon_core POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+       ${CMAKE_SOURCE_DIR}/python
+       ${CMAKE_BINARY_DIR}/python
+
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+       ${CMAKE_SOURCE_DIR}/resources
+       ${CMAKE_CURRENT_BINARY_DIR}/resources
+
+    COMMENT "Copying resources and python directory to build directory..."
+)
+
 # Copy resource dir, define it as compile definition
 target_compile_definitions(nanon_core PRIVATE
-    RESOURCE_PATH="${CMAKE_BINARY_DIR}/resources/"
+    RESOURCE_PATH="${CMAKE_CURRENT_BINARY_DIR}/resources/"
 )
 
 
-# append to PYTHONPATH
-list(APPEND PYTHONPATH "${CMAKE_BINARY_DIR}/python/")
+# TODO
+#target_compile_definitions(nanon_core PRIVATE
+#    PYTHON_MODULE_PATH="${CMAKE_CURRENT_BINARY_DIR}/python/"
+#)
+

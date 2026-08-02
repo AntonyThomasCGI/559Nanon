@@ -1,9 +1,10 @@
 
 #include "nanon/io/config.hpp"
-#include "nanon/style/theme_manager.hpp"
 #include "nanon/style/theme.hpp"
+#include "nanon/style/theme_manager.hpp"
 #include "nanon/widgets/editor.hpp"
 
+#include <QStyle>
 #include <QtGui/QPainter>
 #include <QtGui/QTextBlock>
 
@@ -19,7 +20,8 @@
 using namespace nanon::widgets;
 
 
-NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
+NanonEditor::NanonEditor(NanonSession *session, QWidget *parent)
+    : QPlainTextEdit(parent), m_session(session)
 {
     lineNumberArea = new LineNumberArea(this);
 
@@ -44,7 +46,11 @@ NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
         m_language = std::make_unique<edits::NanonLanguage>(languageConfig);
     }
 
+    m_highlighter = std::make_unique<Highlighter>(document(), m_textMateEngine.get());
+
     configurePalette();
+
+    connect(m_session, &NanonSession::themeChanged, this, &NanonEditor::configurePalette);
 
     connect(this, &NanonEditor::blockCountChanged, this, &NanonEditor::updateLineNumberAreaWidth);
     connect(this, &NanonEditor::updateRequest, this, &NanonEditor::updateLineNumberArea);
@@ -52,21 +58,17 @@ NanonEditor::NanonEditor(QWidget *parent) : QPlainTextEdit(parent)
 
     updateLineNumberAreaWidth(0);
     highlightCurrentLine();
-
-    m_highlighter = std::make_unique<Highlighter>(document(), m_textMateEngine.get());
 }
 
 
 void NanonEditor::configurePalette()
 {
-    QPalette palette;
-
-    style::NanonTheme *theme = style::NanonThemeManager::instance().theme();
-
+    auto theme = m_session->currentTheme();
     if (theme == nullptr) {
         std::cout << "WARNING no theme set" << std::endl;
         return;
     }
+    QPalette palette;
 
     palette.setColor(
         QPalette::Highlight,
@@ -86,6 +88,18 @@ void NanonEditor::configurePalette()
     );
 
     setPalette(palette);
+
+    // Refresh to get new palette colors
+    m_highlighter->rehighlight();
+    highlightCurrentLine();
+
+    style()->unpolish(this);
+    style()->polish(this);
+    update();
+    this->viewport()->setPalette(this->palette());
+
+    viewport()->update();
+    viewport()->updateGeometry();
 }
 
 
@@ -149,7 +163,7 @@ int NanonEditor::lineNumberAreaWidth()
     }
     digits = digits + spacePadding;
 
-    int space = 12 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * qMax(digits, 5);
+    int space = 16 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * qMax(digits, 5);
 
     return space;
 }
@@ -193,9 +207,9 @@ void NanonEditor::highlightCurrentLine()
 
     QTextEdit::ExtraSelection selection;
 
-    style::NanonTheme *theme = style::NanonThemeManager::instance().theme();
-    QColor lineColor = QColor(theme->getColor("editor.lineHighlightBackground"));
+    auto theme = m_session->currentTheme();
 
+    QColor lineColor = QColor(theme->getColor("editor.lineHighlightBackground"));
     selection.format.setBackground(lineColor);
     selection.format.setProperty(QTextFormat::FullWidthSelection, true);
     selection.cursor = textCursor();
@@ -207,13 +221,9 @@ void NanonEditor::highlightCurrentLine()
 
 void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
 {
-    style::NanonTheme *theme = style::NanonThemeManager::instance().theme();
+    auto theme = m_session->currentTheme();
 
     QPainter painter(lineNumberArea);
-    //QColor bgColor = QColor(Qt::black);
-    //QColor rulerColor = QColor(48, 25, 52, 255);
-    //QColor lineNumberColor = QColor(191, 255, 0, 255)
-
     QColor bgColor = theme->getColor("editor.background");
     QColor lineNumberColor = theme->getColor("editorLineNumber.foreground");
     QColor lineNumberSpecialColor = theme->getColor("editorLineNumberSpecial.foreground");
@@ -255,12 +265,12 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
                 {
                     number.insert(i, " ");
                 }
-                painter.drawText(0, top, lineNumberArea->width() -13, fontMetrics().height(),
+                painter.drawText(0, top, lineNumberArea->width() - 12, fontMetrics().height(),
                              Qt::AlignRight, number);
             } else {
                 painter.setPen(lineNumberColor);
                 QString number = QString::number((blockNumber + 1) % 10);
-                painter.translate(lineNumberArea->width() - 13, 0);
+                painter.translate(lineNumberArea->width() - 12, 0);
                 painter.rotate(90);
                 painter.drawText(top, 0, fontMetrics().height(), fontMetrics().height(),
                                 Qt::AlignCenter, number);

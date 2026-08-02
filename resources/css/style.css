@@ -1,0 +1,7 @@
+/*
+ * Style sheet used by Nanon.
+ */
+
+QPlainTextEdit {
+    border: none;
+}

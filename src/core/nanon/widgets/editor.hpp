@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nanon/edits/language.hpp"
+#include "nanon/session.hpp"
 #include "nanon/style/theme.hpp"
 #include "nanon/textmate/engine.hpp"
 #include "nanon/widgets/highlighter.hpp"
@@ -21,7 +22,7 @@ class NanonEditor : public QPlainTextEdit
     Q_OBJECT
 
 public:
-    NanonEditor(QWidget *parent = nullptr);
+    NanonEditor(NanonSession *session, QWidget *parent = nullptr);
 
     void lineNumberAreaPaintEvent(QPaintEvent *event);
     int lineNumberAreaWidth();
@@ -44,9 +45,10 @@ private slots:
 private:
     QWidget *lineNumberArea;
 
+    NanonSession *m_session;
+
     std::unique_ptr<textmate::TextMateEngine> m_textMateEngine;
     std::unique_ptr<edits::NanonLanguage> m_language;
-
     std::unique_ptr<Highlighter> m_highlighter;
 };
 
