@@ -27,7 +27,7 @@ class SocketWriter:
         self.send = send
 
     def write(self, text):
-        # Do not place code that logs to stdout/stderr in this function!
+        # Do not place code that writes to stdout/stderr in this function!
         if text:
             self.send({
                 "event": self.event,
