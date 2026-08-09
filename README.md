@@ -1,5 +1,10 @@
 # 559 Nanon
 
-repo for screwing around with qt in maya, trying to make a text editor.
+A custom QT-based script editor with full textmate support. Currently supports python only.
 
-Nanon (minor planet designation: 559 Nanon) is a minor planet orbiting the Sun.
+Builds three components:
+    * nanon_core: Shared lib with all core functionality
+    * nanon (standalone): The standalone python editor
+    * nanon_maya: A maya plugin that replaces the native maya script editor.
+
+Named after minor planet designation: 559 Nanon - a minor planet orbiting our Sun.

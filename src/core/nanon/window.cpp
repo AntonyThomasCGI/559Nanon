@@ -227,8 +227,6 @@ void NanonWindow::onShowCommandPalette()
     auto &registry = commands::NanonCommandRegistry::instance();
     auto actions = registry.getAllActions();
 
-    std::cout << "Len actions: " << std::to_string(actions.length()) << std::endl;
-
     widgets::SearchMenu *menu = new widgets::SearchMenu(actions);
 
     QPoint widgetCenter = rect().center();
