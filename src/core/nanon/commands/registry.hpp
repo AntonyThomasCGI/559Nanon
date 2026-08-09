@@ -9,6 +9,9 @@ namespace nanon {
 namespace commands {
 
 
+/**
+ * Centralized registry of all Actions available in the UI.
+ */
 class NanonCommandRegistry
 {
 
