@@ -1,3 +1,9 @@
+"""
+Launched via Nanon standalone and connected over socket to run as the dedicated
+python interpreter. Responsible for receiving raw code from the UI, executing it,
+and sending the program output back.
+"""
+
 import ast
 import code
 import contextlib
