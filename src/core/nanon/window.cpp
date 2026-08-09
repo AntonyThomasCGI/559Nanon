@@ -1,4 +1,6 @@
 
+#include "nanon/commands/action.hpp"
+#include "nanon/commands/registry.hpp"
 #include "nanon/io/config.hpp"
 #include "nanon/style/theme.hpp"
 #include "nanon/style/theme_manager.hpp"
@@ -41,17 +43,17 @@ NanonWindow::NanonWindow(QWidget* parent)
 
     QSplitter *splitter = new QSplitter(Qt::Vertical);
 
-    m_outputWindow = std::make_unique<QPlainTextEdit>();
+    m_outputWindow = new QPlainTextEdit(this);
     m_outputWindow->setReadOnly(true);
     m_outputWindow->setWordWrapMode(QTextOption::NoWrap);
     m_outputWindow->setFrameShape(QFrame::NoFrame);
 
-    m_editor = std::make_unique<widgets::NanonEditor>(m_session.get());
+    m_editor = new widgets::NanonEditor(m_session.get(), this);
     m_editor->setWordWrapMode(QTextOption::NoWrap);
     m_editor->setFrameShape(QFrame::NoFrame);
 
-    splitter->addWidget(m_outputWindow.get());
-    splitter->addWidget(m_editor.get());
+    splitter->addWidget(m_outputWindow);
+    splitter->addWidget(m_editor);
 
     setCentralWidget(splitter);
 
@@ -86,27 +88,31 @@ NanonWindow::NanonWindow(QWidget* parent)
     createStatusBar();
 
     configurePalette();
-
     connect(m_session.get(), &NanonSession::themeChanged, this, &NanonWindow::configurePalette);
 
-    QShortcut *shortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Return), this);
-    connect(shortcut, &QShortcut::activated, this, &NanonWindow::onRunCode);
+    QString editorText = m_session->loadEditorContent();
+    m_editor->setPlainText(editorText);
 
-    QShortcut *scopesShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_S), this);
-    connect(scopesShortcut, &QShortcut::activated, this, &NanonWindow::onShowScopesAtCursor);
+    // Actions:
+    auto changeThemeAction = new commands::NanonAction("Set Color Theme", this);
+    connect(changeThemeAction, &commands::NanonAction::triggered, this, &NanonWindow::onChooseColorTheme);
 
-    QShortcut *showAllCommands = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_P), this);
-    connect(showAllCommands, &QShortcut::activated, this, &NanonWindow::onShowAllCommands);
+    auto runCodeAction = new commands::NanonAction("Run Code", QKeySequence(Qt::CTRL | Qt::Key_Return), this);
+    connect(runCodeAction, &commands::NanonAction::triggered, this, &NanonWindow::onRunCode);
+
+    auto showScopesAction = new commands::NanonAction("Show Scopes At Cursor", this);
+    connect(showScopesAction, &commands::NanonAction::triggered, this, &NanonWindow::onShowScopesAtCursor);
+
+    auto commandPaletteAction = new commands::NanonAction("Command Palette", QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_P), this, true);
+    connect(commandPaletteAction, &commands::NanonAction::triggered, this, &NanonWindow::onShowCommandPalette);
+
+    auto clearOutputAction = new commands::NanonAction("Clear Output", this);
+    connect(clearOutputAction, &commands::NanonAction::triggered, this, &NanonWindow::onClearOutput);
 }
-
-
-NanonWindow::~NanonWindow()
-{}
 
 
 void NanonWindow::configurePalette()
 {
-
     auto theme = m_session->currentTheme();
     if (theme == nullptr) {
         return;
@@ -157,6 +163,12 @@ void NanonWindow::configurePalette()
 }
 
 
+void NanonWindow::onClearOutput()
+{
+    m_outputWindow->clear();
+}
+
+
 void NanonWindow::onRunCode()
 {
     if (m_interpreter == nullptr) {
@@ -178,6 +190,8 @@ void NanonWindow::onRunCode()
     QString resultStderr = QString::fromStdString(result.stderr);
 
     appendOutput(resultStdout);
+
+    m_session->saveEditorContent(m_editor->toPlainText());
 }
 
 
@@ -203,28 +217,19 @@ void NanonWindow::onShowScopesAtCursor()
     if (!hasScope) {
         menu.addAction("Not in a scope");
     }
+    menu.setPalette(palette());
     menu.exec(m_editor->viewport()->mapToGlobal(cursorCoordinates));
 }
 
 
-void NanonWindow::onShowAllCommands()
+void NanonWindow::onShowCommandPalette()
 {
-    QStandardItemModel *actionModel = new QStandardItemModel();
+    auto &registry = commands::NanonCommandRegistry::instance();
+    auto actions = registry.getAllActions();
 
-    QAction *changeTheme = new QAction("Set Color Theme", this);
-    connect(changeTheme, &QAction::triggered, this, &NanonWindow::printHI);
-    QStandardItem *changeThemeItem = new QStandardItem(changeTheme->text());
-    changeThemeItem->setData(QVariant::fromValue(changeTheme), Qt::UserRole);
+    std::cout << "Len actions: " << std::to_string(actions.length()) << std::endl;
 
-    QAction *showScopes = new QAction("Show Textmate Scopes", this);
-    connect(showScopes, &QAction::triggered, this, &NanonWindow::onShowScopesAtCursor);
-    QStandardItem *showScopesItem = new QStandardItem(showScopes->text());
-    showScopesItem->setData(QVariant::fromValue(showScopes), Qt::UserRole);
-
-    actionModel->appendRow(changeThemeItem);
-    actionModel->appendRow(showScopesItem);
-
-    widgets::SearchMenu *menu = new widgets::SearchMenu(actionModel);
+    widgets::SearchMenu *menu = new widgets::SearchMenu(actions);
 
     QPoint widgetCenter = rect().center();
     QPoint topCenter = QPoint(widgetCenter.x(), rect().top());
@@ -236,9 +241,19 @@ void NanonWindow::onShowAllCommands()
     menu->deleteLater();
 }
 
-void NanonWindow::printHI()
+
+// TODO, move this action to theme manager, have it create a new search menu with themes
+void NanonWindow::onChooseColorTheme()
 {
-    std::cout << "HI" << std::endl;
+    auto &themeManger = style::NanonThemeManager::instance();
+    QString currentTheme = m_session->currentTheme()->getName();
+    style::NanonTheme *theme;
+    if (currentTheme == "Solarized Light") {
+        theme = themeManger.getThemeByName("Nanon Dark");
+    } else {
+        theme = themeManger.getThemeByName("Solarized Light");
+    }
+    m_session->setCurrentTheme(theme);
 }
 
 

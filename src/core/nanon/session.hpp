@@ -2,7 +2,10 @@
 
 #include "nanon/style/theme.hpp"
 
+#include <QSettings>
 #include <QtCore/QObject>
+
+#include <memory>
 
 
 namespace nanon {
@@ -19,8 +22,14 @@ public:
     style::NanonTheme* currentTheme();
     void setCurrentTheme(style::NanonTheme *theme);
 
+    void saveEditorContent(const QString &editorText);
+    QString loadEditorContent();
+
 signals:
     void themeChanged(style::NanonTheme*);
+
+private:
+    std::unique_ptr<QSettings> m_settings;
 
 };
 

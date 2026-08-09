@@ -1,6 +1,6 @@
 #pragma once
 
-#include "<nanon/commands/command.hpp>"
+#include "nanon/commands/action.hpp"
 
 #include <memory>
 #include <functional>
@@ -23,16 +23,16 @@ public:
         return instance;
     }
 
-    void registerCommand(const QString &commandName, NanonCommand *command)
-    {
-        m_commands[commandName] = command;
-    };
+    void registerAction(NanonAction *action);
+    void unregisterAction(NanonAction *action);
+
+    QList<NanonAction*> getAllActions(bool hidden = false);
 
 private:
     NanonCommandRegistry() {};
     ~NanonCommandRegistry() = default;
 
-    QMap<QString, NanonCommand*> m_commands;
+    QMap<QString, NanonAction*> m_actions;
 };
 
 }

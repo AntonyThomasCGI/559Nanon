@@ -2,7 +2,9 @@
 include_directories(external/nlohmann/json)
 
 add_library(nanon_core SHARED
-    nanon/commands/command.hpp
+    nanon/commands/action.cpp
+    nanon/commands/action.hpp
+    nanon/commands/registry.cpp
     nanon/commands/registry.hpp
     nanon/interpreter/base.hpp
     nanon/interpreter/python.cpp

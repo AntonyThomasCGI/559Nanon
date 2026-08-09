@@ -49,7 +49,7 @@ private:
 
     std::unique_ptr<textmate::TextMateEngine> m_textMateEngine;
     std::unique_ptr<edits::NanonLanguage> m_language;
-    std::unique_ptr<Highlighter> m_highlighter;
+    Highlighter* m_highlighter;
 };
 
 

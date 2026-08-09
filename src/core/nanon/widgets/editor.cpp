@@ -46,7 +46,7 @@ NanonEditor::NanonEditor(NanonSession *session, QWidget *parent)
         m_language = std::make_unique<edits::NanonLanguage>(languageConfig);
     }
 
-    m_highlighter = std::make_unique<Highlighter>(document(), m_textMateEngine.get());
+    m_highlighter = new Highlighter(document(), m_textMateEngine.get());
 
     configurePalette();
 

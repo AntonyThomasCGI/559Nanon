@@ -24,7 +24,7 @@ class NanonWindow : public QMainWindow
 
 public:
     NanonWindow(QWidget* parent = 0);
-    virtual ~NanonWindow();
+    virtual ~NanonWindow() = default;
 
     void appendOutput(QString text);
 
@@ -34,16 +34,18 @@ private:
     void createStatusBar();
     void configurePalette();
 
-    std::unique_ptr<QPlainTextEdit> m_outputWindow;
     std::unique_ptr<NanonSession> m_session;
-    std::unique_ptr<widgets::NanonEditor> m_editor;
+
+    QPlainTextEdit* m_outputWindow;
+    widgets::NanonEditor* m_editor;
 
     interpreter::NanonInterpreterBase* m_interpreter = nullptr;
 
+    void onChooseColorTheme();
+    void onClearOutput();
     void onRunCode();
+    void onShowCommandPalette();
     void onShowScopesAtCursor();
-    void onShowAllCommands();
-    void printHI();
 
 };
 

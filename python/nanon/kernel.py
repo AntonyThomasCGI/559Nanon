@@ -65,7 +65,7 @@ class Worker:
         except SyntaxError:
             return False
 
-        if len(tree.body) > 1:
+        if len(tree.body) != 1:
             return False
 
         node = tree.body[-1]
