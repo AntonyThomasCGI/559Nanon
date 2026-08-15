@@ -31,6 +31,8 @@ add_library(nanon_core SHARED
     nanon/widgets/highlighter.hpp
     nanon/widgets/search_menu.cpp
     nanon/widgets/search_menu.hpp
+    nanon/widgets/tab_bar.cpp
+    nanon/widgets/tab_bar.hpp
     nanon/window.cpp
     nanon/window.hpp
     nanon/session.cpp

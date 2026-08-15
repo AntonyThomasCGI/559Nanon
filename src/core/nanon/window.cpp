@@ -19,6 +19,7 @@
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QSplitter>
 #include <QtWidgets/QStatusBar>
+#include <QtWidgets/QTabWidget>
 
 #include <filesystem>
 #include <iostream>
@@ -45,15 +46,32 @@ NanonWindow::NanonWindow(QWidget* parent)
 
     m_outputWindow = new QPlainTextEdit(this);
     m_outputWindow->setReadOnly(true);
-    m_outputWindow->setWordWrapMode(QTextOption::NoWrap);
     m_outputWindow->setFrameShape(QFrame::NoFrame);
+    // TODO, wrap mode setting?
+    m_outputWindow->setWordWrapMode(QTextOption::WrapAnywhere);
 
     m_editor = new widgets::NanonEditor(m_session.get(), this);
     m_editor->setWordWrapMode(QTextOption::NoWrap);
     m_editor->setFrameShape(QFrame::NoFrame);
 
+    m_tabWidget = new widgets::NanonTabWidget(this);
+    m_tabWidget->setDocumentMode(true);
+    m_tabWidget->setTabShape(QTabWidget::Rounded);
+
+    m_tabWidget->addTab(m_editor, "default");
+
+    auto editor1 = new widgets::NanonEditor(m_session.get(), this);
+    editor1->setWordWrapMode(QTextOption::NoWrap);
+    editor1->setFrameShape(QFrame::NoFrame);
+    m_tabWidget->addTab(editor1, "another");
+
+    auto editor2 = new widgets::NanonEditor(m_session.get(), this);
+    editor2->setWordWrapMode(QTextOption::NoWrap);
+    editor2->setFrameShape(QFrame::NoFrame);
+    m_tabWidget->addTab(editor2, "another2");
+
     splitter->addWidget(m_outputWindow);
-    splitter->addWidget(m_editor);
+    splitter->addWidget(m_tabWidget);
 
     setCentralWidget(splitter);
 
@@ -138,6 +156,27 @@ void NanonWindow::configurePalette()
     );
 
     m_outputWindow->setPalette(outputPalette);
+
+    QPalette tabPalette;
+    tabPalette.setColor(
+        QPalette::Window,
+        QColor(theme->getColor("editor.background"))
+    );
+    tabPalette.setColor(
+        QPalette::Base,
+        QColor(theme->getColor("editor.background"))
+    );
+    tabPalette.setColor(
+        QPalette::Button,
+        QColor(theme->getColor("menu.foreground"))
+    );
+    tabPalette.setColor(
+        QPalette::Highlight,
+        QColor(theme->getColor("editorLineNumberSpecial.foreground"))
+    );
+    m_tabWidget->setPalette(tabPalette);
+    //m_tabWidget->tabBar()->setProperty("drawBase", 0);
+    m_tabWidget->tabBar()->setPalette(tabPalette);
 
     QPalette statusPalette;
 
@@ -230,7 +269,8 @@ void NanonWindow::onShowCommandPalette()
     widgets::SearchMenu *menu = new widgets::SearchMenu(actions);
 
     QPoint widgetCenter = rect().center();
-    QPoint topCenter = QPoint(widgetCenter.x(), rect().top());
+    int menuTop = rect().top() + (widgetCenter.y() - rect().top()) / 2;
+    QPoint topCenter = QPoint(widgetCenter.x(), menuTop);
     QPoint globalTopCenter = mapToGlobal(topCenter);
     globalTopCenter.rx() -= menu->sizeHint().width() / 2;
 
@@ -243,15 +283,29 @@ void NanonWindow::onShowCommandPalette()
 // TODO, move this action to theme manager, have it create a new search menu with themes
 void NanonWindow::onChooseColorTheme()
 {
-    auto &themeManger = style::NanonThemeManager::instance();
-    QString currentTheme = m_session->currentTheme()->getName();
-    style::NanonTheme *theme;
-    if (currentTheme == "Solarized Light") {
-        theme = themeManger.getThemeByName("Nanon Dark");
-    } else {
-        theme = themeManger.getThemeByName("Solarized Light");
+    auto &themeManager = style::NanonThemeManager::instance();
+    QList<commands::NanonAction*> themeActions;
+
+    for (auto &theme : themeManager.themes()) {
+        auto action = new commands::NanonAction(theme.getName(), this, true);
+        connect(action, &commands::NanonAction::triggered, this, [this, theme]() {
+            auto *themePtr = style::NanonThemeManager::instance().getThemeByName(theme.getName());
+            m_session->setCurrentTheme(themePtr);
+        });
+        themeActions.push_back(action);
     }
-    m_session->setCurrentTheme(theme);
+
+    widgets::SearchMenu *menu = new widgets::SearchMenu(themeActions);
+
+    QPoint widgetCenter = rect().center();
+    int menuTop = rect().top() + (widgetCenter.y() - rect().top()) / 2;
+    QPoint topCenter = QPoint(widgetCenter.x(), menuTop);
+    QPoint globalTopCenter = mapToGlobal(topCenter);
+    globalTopCenter.rx() -= menu->sizeHint().width() / 2;
+
+    menu->exec(globalTopCenter);
+
+    menu->deleteLater();
 }
 
 

@@ -17,6 +17,12 @@ NanonTheme* NanonThemeManager::theme()
 }
 
 
+QList<NanonTheme> NanonThemeManager::themes() const
+{
+    return m_availableThemes.values();
+}
+
+
 void NanonThemeManager::setTheme(NanonTheme *theme)
 {
     m_theme = theme;

@@ -28,6 +28,7 @@ public:
 
     NanonTheme* theme();
     NanonTheme* defaultTheme() { return &m_availableThemes["Solarized Light"]; };
+    QList<NanonTheme> themes() const;
 
     NanonTheme* getThemeByName(QString themeName) {
         if (!m_availableThemes.contains(themeName)) {
@@ -35,6 +36,7 @@ public:
         }
         return &m_availableThemes[themeName];
     }
+
 
     void setTheme(NanonTheme *theme);
     void setThemeByName(QString themeName);
