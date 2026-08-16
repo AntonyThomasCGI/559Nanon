@@ -385,7 +385,6 @@ void NanonEditor::setDocumentIndex(int index)
 
 int NanonEditor::onNewDocument()
 {
-    std::cout << "OnNewDocument" << std::endl;
     NanonDocument *doc = new NanonDocument(this);
     doc->setDocumentLayout(new QPlainTextDocumentLayout(doc));
     doc->setDefaultFont(font());
