@@ -401,13 +401,11 @@ int NanonEditor::onNewDocument()
 
 void NanonEditor::onDeleteDocument()
 {
-    // TODO, should remove the QSetting for this document,
-    // But currently the way these are stored makes this awkward (index based)
-
-    // I think the way to fix this is to have a custom QTextDocument
-    // class, store unique uuid, name, cursor position etc.
+    auto *doc = m_documents.at(m_currentDocumentIndex);
+    m_session->deleteDocument(doc->uuid());
 
     m_documents.remove(m_currentDocumentIndex);
+
 
     if (m_documents.isEmpty()) {
         m_currentDocumentIndex = onNewDocument();
@@ -430,6 +428,5 @@ void NanonEditor::saveEditorSession()
 
     doc->setCursorPosition(textCursor().position());
 
-    std::cout << "Save document " << doc->uuid().toString().toStdString() << " to settings" << std::endl;
     m_session->saveDocument(doc);
 }

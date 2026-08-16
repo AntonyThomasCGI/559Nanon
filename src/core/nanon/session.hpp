@@ -24,6 +24,7 @@ public:
     void setCurrentTheme(style::NanonTheme *theme);
 
     void saveDocument(widgets::NanonDocument *document);
+    bool deleteDocument(QUuid uuid);
     QList<QMap<QString, QVariant>> loadDocuments();
 
 signals:

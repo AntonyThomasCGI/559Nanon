@@ -49,6 +49,18 @@ void NanonSession::saveDocument(widgets::NanonDocument *document)
 }
 
 
+bool NanonSession::deleteDocument(QUuid uuid)
+{
+    QVariant setting = m_settings->value("session/editor/documents");
+    QMap<QString, QVariant> documents = setting.toMap();
+    if (documents.contains(uuid.toString())) {
+        documents.remove(uuid.toString());
+        return true;
+    }
+    return false;
+}
+
+
 QList<QMap<QString, QVariant>> NanonSession::loadDocuments()
 {
     QList<QMap<QString, QVariant>> result;
