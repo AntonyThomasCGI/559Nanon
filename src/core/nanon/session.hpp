@@ -22,8 +22,8 @@ public:
     style::NanonTheme* currentTheme();
     void setCurrentTheme(style::NanonTheme *theme);
 
-    void saveEditorContent(const QString &editorText);
-    QString loadEditorContent();
+    void saveEditorContent(int index, const QString &editorText);
+    QList<QString> loadEditorContent();
 
 signals:
     void themeChanged(style::NanonTheme*);

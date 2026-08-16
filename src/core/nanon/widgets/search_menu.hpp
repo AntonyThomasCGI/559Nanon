@@ -1,15 +1,12 @@
 #pragma once
 
 #include "nanon/commands/action.hpp"
+#include "nanon/widgets/menu.hpp"
 
 #include <QAction>
 #include <QEvent>
 #include <QList>
-#include <QObject>
-#include <QSortFilterProxyModel>
-#include <QtGui/QStandardItemModel>
-#include <QtWidgets/QListView>
-#include <QtWidgets/QMenu>
+#include <QtWidgets/QLineEdit>
 
 
 namespace nanon {
@@ -19,7 +16,7 @@ namespace widgets {
 /**
  * A menu with a search bar for filtering the action items.
  */
-class SearchMenu : public QMenu
+class SearchMenu : public NanonMenu
 {
     Q_OBJECT
 
@@ -29,14 +26,13 @@ public:
 protected:
     bool eventFilter(QObject *watched, QEvent *event);
 
+    void configurePalette();
+
 private:
     void moveSelection(int count);
     void onSearchTextChanged(const QString &text);
-    void runAction(const QModelIndex &index);
 
     QLineEdit* m_searchBar;
-    QListView* m_view;
-    QSortFilterProxyModel* m_model;
 };
 
 

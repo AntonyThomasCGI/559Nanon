@@ -1,4 +1,5 @@
 
+#include "nanon/commands/action.hpp"
 #include "nanon/io/config.hpp"
 #include "nanon/style/theme.hpp"
 #include "nanon/style/theme_manager.hpp"
@@ -46,6 +47,23 @@ NanonEditor::NanonEditor(NanonSession *session, QWidget *parent)
         m_language = std::make_unique<edits::NanonLanguage>(languageConfig);
     }
 
+
+    QList<QString> editorContent = m_session->loadEditorContent();
+    for (auto content : editorContent) {
+        auto doc = new QTextDocument(this);
+        doc->setDocumentLayout(new QPlainTextDocumentLayout(doc));
+        doc->setPlainText(content);
+        m_documents.push_back(doc);
+    }
+    if (m_documents.isEmpty()) {
+        // Create default empty document
+        onNewDocument();
+    }
+
+    // TODO, save the active document index. For now just set last index.
+    m_currentDocumentIndex = m_documents.length() - 1;
+    setDocument(m_documents.at(m_currentDocumentIndex));
+
     m_highlighter = new Highlighter(document(), m_textMateEngine.get());
 
     configurePalette();
@@ -58,6 +76,15 @@ NanonEditor::NanonEditor(NanonSession *session, QWidget *parent)
 
     updateLineNumberAreaWidth(0);
     highlightCurrentLine();
+
+    auto nextDocumentAction = new commands::NanonAction("Editor: Next Document", QKeySequence(Qt::META | Qt::Key_Tab), this);
+    connect(nextDocumentAction, &commands::NanonAction::triggered, this, &NanonEditor::onNextDocument);
+
+    auto previousDocumentAction = new commands::NanonAction("Editor: Previous Document", QKeySequence(Qt::META | Qt::SHIFT | Qt::Key_Tab), this);
+    connect(previousDocumentAction, &commands::NanonAction::triggered, this, &NanonEditor::onPreviousDocument);
+
+    auto newDocumentAction = new commands::NanonAction("Editor: New Document", QKeySequence(Qt::META | Qt::Key_N), this);
+    connect(newDocumentAction, &commands::NanonAction::triggered, this, &NanonEditor::onNewDocument);
 }
 
 
@@ -100,6 +127,15 @@ void NanonEditor::configurePalette()
 
     viewport()->update();
     viewport()->updateGeometry();
+}
+
+
+void NanonEditor::setFont(const QFont &font)
+{
+    QPlainTextEdit::setFont(font);
+    for (auto document : m_documents) {
+        document->setDefaultFont(font);
+    }
 }
 
 
@@ -283,4 +319,50 @@ void NanonEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
         bottom = top + qRound(blockBoundingRect(block).height());
         ++blockNumber;
     }
+}
+
+
+void NanonEditor::onNextDocument()
+{
+    setDocumentIndex(m_currentDocumentIndex + 1);
+}
+
+void NanonEditor::onPreviousDocument()
+{
+    setDocumentIndex(m_currentDocumentIndex - 1);
+}
+
+
+void NanonEditor::setDocumentIndex(int index)
+{
+    if (index < 0 || index >= m_documents.length()) {
+        return;
+    }
+
+    auto doc = m_documents.at(index);
+    m_highlighter->setDocument(doc);
+    setDocument(doc);
+
+    m_currentDocumentIndex = index;
+}
+
+
+int NanonEditor::onNewDocument()
+{
+    auto doc = new QTextDocument(this);
+    doc->setDocumentLayout(new QPlainTextDocumentLayout(doc));
+    doc->setDefaultFont(font());
+    m_documents.push_back(doc);
+
+    int newIdx = m_documents.length() - 1;
+    setDocumentIndex(newIdx);
+
+    return newIdx;
+}
+
+
+void NanonEditor::saveEditorSession()
+{
+    m_session->saveEditorContent(m_currentDocumentIndex, toPlainText());
+
 }

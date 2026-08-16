@@ -3,7 +3,7 @@
 #include "nanon/interpreter/base.hpp"
 #include "nanon/widgets/editor.hpp"
 #include "nanon/widgets/highlighter.hpp"
-#include "nanon/widgets/tab_bar.hpp"
+#include "nanon/widgets/document_selector.hpp"
 #include "nanon/session.hpp"
 
 #include <QtCore/QPointer>
@@ -39,7 +39,7 @@ private:
 
     QPlainTextEdit* m_outputWindow;
     widgets::NanonEditor* m_editor;
-    widgets::NanonTabWidget* m_tabWidget;
+    widgets::NanonDocumentView* m_documentView;
 
     interpreter::NanonInterpreterBase* m_interpreter = nullptr;
 

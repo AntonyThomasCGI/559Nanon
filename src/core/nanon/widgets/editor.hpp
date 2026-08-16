@@ -30,6 +30,10 @@ public:
     // TODO, idk if the main window should be accessing this.
     QVector<QString> scopesAtPosition(QTextBlock block, int pos) { return m_textMateEngine->scopesAtPosition(block, pos); };
 
+    void setFont(const QFont &);
+
+    void saveEditorSession();
+
 protected:
     //void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
@@ -47,9 +51,17 @@ private:
 
     NanonSession *m_session;
 
+    QList<QTextDocument*> m_documents;
+    int m_currentDocumentIndex;
+
     std::unique_ptr<textmate::TextMateEngine> m_textMateEngine;
     std::unique_ptr<edits::NanonLanguage> m_language;
     Highlighter* m_highlighter;
+
+    void onNextDocument();
+    void onPreviousDocument();
+    void setDocumentIndex(int index);
+    int onNewDocument();
 };
 
 

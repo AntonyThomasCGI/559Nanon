@@ -39,13 +39,25 @@ void NanonSession::setCurrentTheme(style::NanonTheme *theme)
 }
 
 
-void NanonSession::saveEditorContent(const QString &editorText)
+void NanonSession::saveEditorContent(int index, const QString &editorText)
 {
-    m_settings->setValue("session/editor/documents/0", editorText);
+    QString key = QString("session/editor/documents/") + QString::number(index);
+    m_settings->setValue(key, editorText);
 }
 
 
-QString NanonSession::loadEditorContent()
+QList<QString> NanonSession::loadEditorContent()
 {
-    return m_settings->value("session/editor/documents/0").toString();
+    QList<QString> result;
+    int count = 0;
+    while (true) {
+        QString key = QString("session/editor/documents/") + QString::number(count);
+        QVariant value = m_settings->value(key);
+        if (value.isNull()) {
+            break;
+        }
+        result.push_back(value.toString());
+        count ++;
+    }
+    return result;
 }

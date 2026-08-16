@@ -16,6 +16,28 @@ NanonTabWidget::NanonTabWidget(QWidget *parent)
     auto tabBar = new NanonTabBar();
     tabBar->setAutoFillBackground(true);
     setTabBar(tabBar);
+
+    //QPalette tabPalette;
+    //tabPalette.setColor(
+    //    QPalette::Window,
+    //    QColor(theme->getColor("editor.background"))
+    //);
+    //tabPalette.setColor(
+    //    QPalette::Base,
+    //    QColor(theme->getColor("editor.background"))
+    //);
+    //tabPalette.setColor(
+    //    QPalette::Button,
+    //    QColor(theme->getColor("menu.foreground"))
+    //);
+    //tabPalette.setColor(
+    //    QPalette::Highlight,
+    //    QColor(theme->getColor("editorLineNumberSpecial.foreground"))
+    //);
+    //setPalette(tabPalette);
+    ////m_tabWidget->tabBar()->setProperty("drawBase", 0);
+    //tabBar->setPalette(tabPalette);
+
 }
 
 

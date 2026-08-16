@@ -54,24 +54,15 @@ NanonWindow::NanonWindow(QWidget* parent)
     m_editor->setWordWrapMode(QTextOption::NoWrap);
     m_editor->setFrameShape(QFrame::NoFrame);
 
-    m_tabWidget = new widgets::NanonTabWidget(this);
-    m_tabWidget->setDocumentMode(true);
-    m_tabWidget->setTabShape(QTabWidget::Rounded);
+    m_documentView = new widgets::NanonDocumentView(this);
 
-    m_tabWidget->addTab(m_editor, "default");
-
-    auto editor1 = new widgets::NanonEditor(m_session.get(), this);
-    editor1->setWordWrapMode(QTextOption::NoWrap);
-    editor1->setFrameShape(QFrame::NoFrame);
-    m_tabWidget->addTab(editor1, "another");
-
-    auto editor2 = new widgets::NanonEditor(m_session.get(), this);
-    editor2->setWordWrapMode(QTextOption::NoWrap);
-    editor2->setFrameShape(QFrame::NoFrame);
-    m_tabWidget->addTab(editor2, "another2");
+    QList<QTextDocument*> documents;
+    documents.push_back(m_editor->document());
+    auto documentModel = new widgets::NanonDocumentModel(documents, this);
+    m_documentView->setModel(documentModel);
 
     splitter->addWidget(m_outputWindow);
-    splitter->addWidget(m_tabWidget);
+    splitter->addWidget(m_editor);
 
     setCentralWidget(splitter);
 
@@ -92,8 +83,8 @@ NanonWindow::NanonWindow(QWidget* parent)
         QFont font = QFont(fontFamily);
         font.setPointSize(14);
         this->setFont(font);
-        m_editor->setFont(QFont(fontFamily));
-        m_outputWindow->setFont(QFont(fontFamily));
+        m_editor->setFont(font);
+        m_outputWindow->setFont(font);
     } else {
         std::cerr << "Failed to load font: " << defaultFont.string() << std::endl;
     }
@@ -108,24 +99,22 @@ NanonWindow::NanonWindow(QWidget* parent)
     configurePalette();
     connect(m_session.get(), &NanonSession::themeChanged, this, &NanonWindow::configurePalette);
 
-    QString editorText = m_session->loadEditorContent();
-    m_editor->setPlainText(editorText);
-
     // Actions:
     auto changeThemeAction = new commands::NanonAction("Set Color Theme", this);
     connect(changeThemeAction, &commands::NanonAction::triggered, this, &NanonWindow::onChooseColorTheme);
 
-    auto runCodeAction = new commands::NanonAction("Run Code", QKeySequence(Qt::CTRL | Qt::Key_Return), this);
+    auto runCodeAction = new commands::NanonAction("Run Code", QKeySequence(Qt::META | Qt::Key_Return), this);
     connect(runCodeAction, &commands::NanonAction::triggered, this, &NanonWindow::onRunCode);
 
     auto showScopesAction = new commands::NanonAction("Show Scopes At Cursor", this);
     connect(showScopesAction, &commands::NanonAction::triggered, this, &NanonWindow::onShowScopesAtCursor);
 
-    auto commandPaletteAction = new commands::NanonAction("Command Palette", QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_P), this, true);
+    auto commandPaletteAction = new commands::NanonAction("Command Palette", QKeySequence(Qt::META | Qt::SHIFT | Qt::Key_P), this, true);
     connect(commandPaletteAction, &commands::NanonAction::triggered, this, &NanonWindow::onShowCommandPalette);
 
     auto clearOutputAction = new commands::NanonAction("Clear Output", this);
     connect(clearOutputAction, &commands::NanonAction::triggered, this, &NanonWindow::onClearOutput);
+
 }
 
 
@@ -156,27 +145,6 @@ void NanonWindow::configurePalette()
     );
 
     m_outputWindow->setPalette(outputPalette);
-
-    QPalette tabPalette;
-    tabPalette.setColor(
-        QPalette::Window,
-        QColor(theme->getColor("editor.background"))
-    );
-    tabPalette.setColor(
-        QPalette::Base,
-        QColor(theme->getColor("editor.background"))
-    );
-    tabPalette.setColor(
-        QPalette::Button,
-        QColor(theme->getColor("menu.foreground"))
-    );
-    tabPalette.setColor(
-        QPalette::Highlight,
-        QColor(theme->getColor("editorLineNumberSpecial.foreground"))
-    );
-    m_tabWidget->setPalette(tabPalette);
-    //m_tabWidget->tabBar()->setProperty("drawBase", 0);
-    m_tabWidget->tabBar()->setPalette(tabPalette);
 
     QPalette statusPalette;
 
@@ -230,7 +198,7 @@ void NanonWindow::onRunCode()
 
     appendOutput(resultStdout);
 
-    m_session->saveEditorContent(m_editor->toPlainText());
+    m_editor->saveEditorSession();
 }
 
 
