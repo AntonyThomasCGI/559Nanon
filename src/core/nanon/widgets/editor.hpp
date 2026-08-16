@@ -4,6 +4,7 @@
 #include "nanon/session.hpp"
 #include "nanon/style/theme.hpp"
 #include "nanon/textmate/engine.hpp"
+#include "nanon/widgets/document.hpp"
 #include "nanon/widgets/highlighter.hpp"
 
 #include <QtWidgets/QPlainTextEdit>
@@ -22,7 +23,8 @@ class NanonEditor : public QPlainTextEdit
     Q_OBJECT
 
 public:
-    NanonEditor(NanonSession *session, QWidget *parent = nullptr);
+    NanonEditor(QSharedPointer<NanonSession> session, QWidget *parent = nullptr);
+    ~NanonEditor();
 
     void lineNumberAreaPaintEvent(QPaintEvent *event);
     int lineNumberAreaWidth();
@@ -34,10 +36,19 @@ public:
 
     void saveEditorSession();
 
+    void setDocument(NanonDocument *document);
+
 protected:
     //void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
+
+
+signals:
+
+    void tabChanged(int tabIndex);
+    void tabCountChanged(int tabNumber);
+
 
 private slots:
     void updateLineNumberAreaWidth(int newBlockCount);
@@ -49,9 +60,9 @@ private slots:
 private:
     QWidget *lineNumberArea;
 
-    NanonSession *m_session;
+    QSharedPointer<NanonSession> m_session;
 
-    QList<QTextDocument*> m_documents;
+    QList<NanonDocument*> m_documents;
     int m_currentDocumentIndex;
 
     std::unique_ptr<textmate::TextMateEngine> m_textMateEngine;
@@ -62,6 +73,7 @@ private:
     void onPreviousDocument();
     void setDocumentIndex(int index);
     int onNewDocument();
+    void onDeleteDocument();
 };
 
 

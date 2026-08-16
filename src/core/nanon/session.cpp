@@ -39,25 +39,25 @@ void NanonSession::setCurrentTheme(style::NanonTheme *theme)
 }
 
 
-void NanonSession::saveEditorContent(int index, const QString &editorText)
+void NanonSession::saveDocument(widgets::NanonDocument *document)
 {
-    QString key = QString("session/editor/documents/") + QString::number(index);
-    m_settings->setValue(key, editorText);
+    auto serializedDocument = document->serialize();
+    QVariant setting = m_settings->value("session/editor/documents");
+    QMap<QString, QVariant> documents = setting.toMap();
+    documents[serializedDocument["uuid"].toString()] = serializedDocument;
+    m_settings->setValue("session/editor/documents", documents);
 }
 
 
-QList<QString> NanonSession::loadEditorContent()
+QList<QMap<QString, QVariant>> NanonSession::loadDocuments()
 {
-    QList<QString> result;
-    int count = 0;
-    while (true) {
-        QString key = QString("session/editor/documents/") + QString::number(count);
-        QVariant value = m_settings->value(key);
-        if (value.isNull()) {
-            break;
-        }
-        result.push_back(value.toString());
-        count ++;
+    QList<QMap<QString, QVariant>> result;
+
+    QVariant setting = m_settings->value("session/editor/documents");
+    QMap<QString, QVariant> rawDocs = setting.toMap();
+    for (auto rawDoc : rawDocs.values()) {
+        result.push_back(rawDoc.toMap());
     }
+
     return result;
 }

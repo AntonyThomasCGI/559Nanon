@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nanon/style/theme.hpp"
+#include "nanon/widgets/document.hpp"
 
 #include <QSettings>
 #include <QtCore/QObject>
@@ -22,8 +23,8 @@ public:
     style::NanonTheme* currentTheme();
     void setCurrentTheme(style::NanonTheme *theme);
 
-    void saveEditorContent(int index, const QString &editorText);
-    QList<QString> loadEditorContent();
+    void saveDocument(widgets::NanonDocument *document);
+    QList<QMap<QString, QVariant>> loadDocuments();
 
 signals:
     void themeChanged(style::NanonTheme*);

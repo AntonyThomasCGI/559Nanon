@@ -25,8 +25,8 @@ add_library(nanon_core SHARED
     nanon/textmate/grammar.hpp
     nanon/textmate/rule.cpp
     nanon/textmate/rule.hpp
-    nanon/widgets/document_selector.cpp
-    nanon/widgets/document_selector.hpp
+    nanon/widgets/document.cpp
+    nanon/widgets/document.hpp
     nanon/widgets/editor.cpp
     nanon/widgets/editor.hpp
     nanon/widgets/highlighter.cpp

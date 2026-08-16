@@ -11,6 +11,7 @@
 
 #include <filesystem>
 #include <iostream>
+#include <math.h>
 
 
 #ifndef RESOURCE_PATH
@@ -21,7 +22,7 @@
 using namespace nanon::widgets;
 
 
-NanonEditor::NanonEditor(NanonSession *session, QWidget *parent)
+NanonEditor::NanonEditor(QSharedPointer<NanonSession> session, QWidget *parent)
     : QPlainTextEdit(parent), m_session(session)
 {
     lineNumberArea = new LineNumberArea(this);
@@ -47,12 +48,10 @@ NanonEditor::NanonEditor(NanonSession *session, QWidget *parent)
         m_language = std::make_unique<edits::NanonLanguage>(languageConfig);
     }
 
-
-    QList<QString> editorContent = m_session->loadEditorContent();
-    for (auto content : editorContent) {
-        auto doc = new QTextDocument(this);
+    auto savedDocuments = m_session->loadDocuments();
+    for (auto rawDoc : savedDocuments) {
+        auto *doc = new NanonDocument(rawDoc, this);
         doc->setDocumentLayout(new QPlainTextDocumentLayout(doc));
-        doc->setPlainText(content);
         m_documents.push_back(doc);
     }
     if (m_documents.isEmpty()) {
@@ -68,7 +67,7 @@ NanonEditor::NanonEditor(NanonSession *session, QWidget *parent)
 
     configurePalette();
 
-    connect(m_session, &NanonSession::themeChanged, this, &NanonEditor::configurePalette);
+    connect(m_session.get(), &NanonSession::themeChanged, this, &NanonEditor::configurePalette);
 
     connect(this, &NanonEditor::blockCountChanged, this, &NanonEditor::updateLineNumberAreaWidth);
     connect(this, &NanonEditor::updateRequest, this, &NanonEditor::updateLineNumberArea);
@@ -85,6 +84,29 @@ NanonEditor::NanonEditor(NanonSession *session, QWidget *parent)
 
     auto newDocumentAction = new commands::NanonAction("Editor: New Document", QKeySequence(Qt::META | Qt::Key_N), this);
     connect(newDocumentAction, &commands::NanonAction::triggered, this, &NanonEditor::onNewDocument);
+
+    auto deleteDocumentAction = new commands::NanonAction("Editor: Delete Document", this);
+    connect(deleteDocumentAction, &commands::NanonAction::triggered, this, &NanonEditor::onDeleteDocument);
+}
+
+
+NanonEditor::~NanonEditor()
+{
+    saveEditorSession();
+}
+
+
+void NanonEditor::setDocument(NanonDocument *document)
+{
+    QPlainTextEdit::setDocument(document);
+
+    int cursorPos = document->cursorPosition();
+
+    if (cursorPos != -1) {
+        auto cur = textCursor();
+        cur.setPosition(cursorPos);
+        setTextCursor(cur);
+    }
 }
 
 
@@ -232,6 +254,7 @@ void NanonEditor::updateLineNumberArea(const QRect &rect, int dy)
     }
 }
 
+
 void NanonEditor::highlightCurrentLine()
 {
     if (textCursor().hasSelection() || isReadOnly()) {
@@ -335,21 +358,35 @@ void NanonEditor::onPreviousDocument()
 
 void NanonEditor::setDocumentIndex(int index)
 {
+
     if (index < 0 || index >= m_documents.length()) {
         return;
     }
 
+    if (index == m_currentDocumentIndex) {
+        return;
+    }
+
+    // Save the current document and cursor postion
+    saveEditorSession();
+
     auto doc = m_documents.at(index);
-    m_highlighter->setDocument(doc);
     setDocument(doc);
 
+    if (m_highlighter != nullptr) {
+        m_highlighter->setDocument(doc);
+    }
+
     m_currentDocumentIndex = index;
+
+    emit tabChanged(index);
 }
 
 
 int NanonEditor::onNewDocument()
 {
-    auto doc = new QTextDocument(this);
+    std::cout << "OnNewDocument" << std::endl;
+    NanonDocument *doc = new NanonDocument(this);
     doc->setDocumentLayout(new QPlainTextDocumentLayout(doc));
     doc->setDefaultFont(font());
     m_documents.push_back(doc);
@@ -357,12 +394,42 @@ int NanonEditor::onNewDocument()
     int newIdx = m_documents.length() - 1;
     setDocumentIndex(newIdx);
 
+    emit tabCountChanged(m_documents.length());
     return newIdx;
+}
+
+
+void NanonEditor::onDeleteDocument()
+{
+    // TODO, should remove the QSetting for this document,
+    // But currently the way these are stored makes this awkward (index based)
+
+    // I think the way to fix this is to have a custom QTextDocument
+    // class, store unique uuid, name, cursor position etc.
+
+    m_documents.remove(m_currentDocumentIndex);
+
+    if (m_documents.isEmpty()) {
+        m_currentDocumentIndex = onNewDocument();
+        return;
+    }
+
+    int newIndex = qMax(0, m_currentDocumentIndex - 1);
+    setDocumentIndex(newIndex);
+
+    emit tabCountChanged(m_documents.length());
 }
 
 
 void NanonEditor::saveEditorSession()
 {
-    m_session->saveEditorContent(m_currentDocumentIndex, toPlainText());
+    auto doc = static_cast<NanonDocument*>(document());
+    if (doc == nullptr) {
+        return;
+    }
 
+    doc->setCursorPosition(textCursor().position());
+
+    std::cout << "Save document " << doc->uuid().toString().toStdString() << " to settings" << std::endl;
+    m_session->saveDocument(doc);
 }

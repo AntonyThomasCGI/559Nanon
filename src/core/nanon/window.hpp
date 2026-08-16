@@ -3,17 +3,16 @@
 #include "nanon/interpreter/base.hpp"
 #include "nanon/widgets/editor.hpp"
 #include "nanon/widgets/highlighter.hpp"
-#include "nanon/widgets/document_selector.hpp"
 #include "nanon/session.hpp"
 
 #include <QtCore/QPointer>
+#include <QtCore/QSharedPointer>
 #include <QtCore/QString>
 #include <QtGui/QSyntaxHighlighter>
 #include <QtGui/QTextDocument>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QPlainTextEdit>
-
-#include <memory>
+#include <QtWidgets/QLabel>
 
 
 namespace nanon {
@@ -31,15 +30,22 @@ public:
 
     void setInterpreter(interpreter::NanonInterpreterBase* interpreter);
 
+
+protected slots:
+
+    void onTabCountChanged(int newCount);
+    void onTabChanged(int newIndex);
+
 private:
     void createStatusBar();
     void configurePalette();
 
-    std::unique_ptr<NanonSession> m_session;
+    QSharedPointer<NanonSession> m_session;
+
+    QLabel *m_tabStatus;
 
     QPlainTextEdit* m_outputWindow;
     widgets::NanonEditor* m_editor;
-    widgets::NanonDocumentView* m_documentView;
 
     interpreter::NanonInterpreterBase* m_interpreter = nullptr;
 

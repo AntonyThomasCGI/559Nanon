@@ -40,7 +40,7 @@ NanonWindow::NanonWindow(QWidget* parent)
 
     std::filesystem::path resourcePath = RESOURCE_PATH;
 
-    m_session = std::make_unique<NanonSession>();
+    m_session = QSharedPointer<NanonSession>::create();
 
     QSplitter *splitter = new QSplitter(Qt::Vertical);
 
@@ -50,16 +50,9 @@ NanonWindow::NanonWindow(QWidget* parent)
     // TODO, wrap mode setting?
     m_outputWindow->setWordWrapMode(QTextOption::WrapAnywhere);
 
-    m_editor = new widgets::NanonEditor(m_session.get(), this);
+    m_editor = new widgets::NanonEditor(m_session, this);
     m_editor->setWordWrapMode(QTextOption::NoWrap);
     m_editor->setFrameShape(QFrame::NoFrame);
-
-    m_documentView = new widgets::NanonDocumentView(this);
-
-    QList<QTextDocument*> documents;
-    documents.push_back(m_editor->document());
-    auto documentModel = new widgets::NanonDocumentModel(documents, this);
-    m_documentView->setModel(documentModel);
 
     splitter->addWidget(m_outputWindow);
     splitter->addWidget(m_editor);
@@ -114,6 +107,9 @@ NanonWindow::NanonWindow(QWidget* parent)
 
     auto clearOutputAction = new commands::NanonAction("Clear Output", this);
     connect(clearOutputAction, &commands::NanonAction::triggered, this, &NanonWindow::onClearOutput);
+
+    connect(m_editor, &widgets::NanonEditor::tabCountChanged, this, &NanonWindow::onTabCountChanged);
+    connect(m_editor, &widgets::NanonEditor::tabChanged, this, &NanonWindow::onTabChanged);
 
 }
 
@@ -279,7 +275,9 @@ void NanonWindow::onChooseColorTheme()
 
 void NanonWindow::createStatusBar()
 {
-    statusBar()->showMessage("Ready");
+    // TODO, this is scuffed
+    m_tabStatus = new QLabel("/");
+    statusBar()->addWidget(m_tabStatus);
 }
 
 
@@ -296,4 +294,22 @@ void NanonWindow::appendOutput(QString text)
 void NanonWindow::setInterpreter(interpreter::NanonInterpreterBase* interpreter)
 {
     m_interpreter = interpreter;
+}
+
+
+void NanonWindow::onTabCountChanged(int newCount)
+{
+    QString text = m_tabStatus->text();
+    QStringList splitText = text.split("/");
+    splitText[1] = QString::number(newCount);
+    m_tabStatus->setText(splitText[0] + "/" + splitText[1]);
+}
+
+
+void NanonWindow::onTabChanged(int newIndex)
+{
+    QString text = m_tabStatus->text();
+    QStringList splitText = text.split("/");
+    splitText[0] = QString::number(newIndex);
+    m_tabStatus->setText(splitText[0] + "/" + splitText[1]);
 }
