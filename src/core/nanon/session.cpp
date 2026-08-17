@@ -45,6 +45,7 @@ void NanonSession::saveDocument(widgets::NanonDocument *document)
     QVariant setting = m_settings->value("session/editor/documents");
     QMap<QString, QVariant> documents = setting.toMap();
     documents[serializedDocument["uuid"].toString()] = serializedDocument;
+
     m_settings->setValue("session/editor/documents", documents);
 }
 
@@ -54,7 +55,13 @@ bool NanonSession::deleteDocument(QUuid uuid)
     QVariant setting = m_settings->value("session/editor/documents");
     QMap<QString, QVariant> documents = setting.toMap();
     if (documents.contains(uuid.toString())) {
-        documents.remove(uuid.toString());
+        int deleteCount = documents.remove(uuid.toString());
+        if (deleteCount != 1) {
+            qWarning() << "Failed to delete document with id " << uuid.toString();
+            return false;
+        }
+
+        m_settings->setValue("session/editor/documents", documents);
         return true;
     }
     return false;

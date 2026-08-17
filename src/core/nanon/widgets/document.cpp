@@ -10,7 +10,7 @@ using namespace nanon::widgets;
 NanonDocument::NanonDocument(QObject *parent)
     : QTextDocument(parent)
 {
-    m_uuid = QUuid::createUuid();
+    m_uuid = QUuid::createUuidV7();
 }
 
 

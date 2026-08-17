@@ -276,7 +276,12 @@ void NanonWindow::onChooseColorTheme()
 void NanonWindow::createStatusBar()
 {
     // TODO, this is scuffed
-    m_tabStatus = new QLabel("/");
+    auto label = new QLabel(" Tab: ");
+    statusBar()->addWidget(label);
+
+    QPair<int, int> tabCounts = m_editor->getTabCounts();
+
+    m_tabStatus = new QLabel(QString::number(tabCounts.first) + "/" + QString::number(tabCounts.second));
     statusBar()->addWidget(m_tabStatus);
 }
 
@@ -310,6 +315,6 @@ void NanonWindow::onTabChanged(int newIndex)
 {
     QString text = m_tabStatus->text();
     QStringList splitText = text.split("/");
-    splitText[0] = QString::number(newIndex);
+    splitText[0] = QString::number(newIndex + 1);
     m_tabStatus->setText(splitText[0] + "/" + splitText[1]);
 }

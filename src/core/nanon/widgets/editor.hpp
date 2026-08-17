@@ -7,6 +7,7 @@
 #include "nanon/widgets/document.hpp"
 #include "nanon/widgets/highlighter.hpp"
 
+#include <QPair>
 #include <QtWidgets/QPlainTextEdit>
 #include <QtWidgets/QWidget>
 
@@ -38,6 +39,8 @@ public:
 
     void setDocument(NanonDocument *document);
 
+    QPair<int, int> getTabCounts();
+
 protected:
     //void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
@@ -63,7 +66,7 @@ private:
     QSharedPointer<NanonSession> m_session;
 
     QList<NanonDocument*> m_documents;
-    int m_currentDocumentIndex;
+    int m_currentDocumentIndex = -1;
 
     std::unique_ptr<textmate::TextMateEngine> m_textMateEngine;
     std::unique_ptr<edits::NanonLanguage> m_language;
@@ -71,7 +74,7 @@ private:
 
     void onNextDocument();
     void onPreviousDocument();
-    void setDocumentIndex(int index);
+    void setDocumentIndex(int index, bool autoSave = true);
     int onNewDocument();
     void onDeleteDocument();
 };

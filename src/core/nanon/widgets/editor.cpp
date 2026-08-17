@@ -356,19 +356,17 @@ void NanonEditor::onPreviousDocument()
 }
 
 
-void NanonEditor::setDocumentIndex(int index)
+void NanonEditor::setDocumentIndex(int index, bool autoSave)
 {
 
     if (index < 0 || index >= m_documents.length()) {
         return;
     }
 
-    if (index == m_currentDocumentIndex) {
-        return;
+    if (autoSave) {
+        // Save the current document and cursor postion
+        saveEditorSession();
     }
-
-    // Save the current document and cursor postion
-    saveEditorSession();
 
     auto doc = m_documents.at(index);
     setDocument(doc);
@@ -401,6 +399,7 @@ int NanonEditor::onNewDocument()
 void NanonEditor::onDeleteDocument()
 {
     auto *doc = m_documents.at(m_currentDocumentIndex);
+
     m_session->deleteDocument(doc->uuid());
 
     m_documents.remove(m_currentDocumentIndex);
@@ -412,7 +411,7 @@ void NanonEditor::onDeleteDocument()
     }
 
     int newIndex = qMax(0, m_currentDocumentIndex - 1);
-    setDocumentIndex(newIndex);
+    setDocumentIndex(newIndex, false);
 
     emit tabCountChanged(m_documents.length());
 }
@@ -428,4 +427,10 @@ void NanonEditor::saveEditorSession()
     doc->setCursorPosition(textCursor().position());
 
     m_session->saveDocument(doc);
+}
+
+
+QPair<int, int> NanonEditor::getTabCounts()
+{
+    return std::make_pair(m_currentDocumentIndex + 1, m_documents.length());
 }
