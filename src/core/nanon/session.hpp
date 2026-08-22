@@ -23,6 +23,9 @@ public:
     style::NanonTheme* currentTheme();
     void setCurrentTheme(style::NanonTheme *theme);
 
+    QList<QString> getRecentActions();
+    void saveRecentAction(QString actionName);
+
     void saveDocument(widgets::NanonDocument *document);
     bool deleteDocument(QUuid uuid);
     QList<QMap<QString, QVariant>> loadDocuments();

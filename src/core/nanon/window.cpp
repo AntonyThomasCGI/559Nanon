@@ -230,7 +230,7 @@ void NanonWindow::onShowCommandPalette()
     auto &registry = commands::NanonCommandRegistry::instance();
     auto actions = registry.getAllActions();
 
-    widgets::SearchMenu *menu = new widgets::SearchMenu(actions);
+    widgets::SearchMenu *menu = new widgets::SearchMenu(actions, m_session);
 
     QPoint widgetCenter = rect().center();
     int menuTop = rect().top() + (widgetCenter.y() - rect().top()) / 2;

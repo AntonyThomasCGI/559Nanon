@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nanon/commands/action.hpp"
+#include "nanon/session.hpp"
 #include "nanon/widgets/menu.hpp"
 
 #include <QAction>
@@ -22,15 +23,18 @@ class SearchMenu : public NanonMenu
 
 public:
     SearchMenu(QList<commands::NanonAction*> &actions, QMenu *parent = 0);
+    SearchMenu(QList<commands::NanonAction*> &actions, QSharedPointer<NanonSession> session, QMenu *parent = 0);
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event);
 
     void configurePalette();
+    void setupActions(QList<commands::NanonAction*> &actions);
 
 private:
     void moveSelection(int count);
     void onSearchTextChanged(const QString &text);
+
 
     QLineEdit* m_searchBar;
 };

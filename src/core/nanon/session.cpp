@@ -39,6 +39,32 @@ void NanonSession::setCurrentTheme(style::NanonTheme *theme)
 }
 
 
+QList<QString> NanonSession::getRecentActions()
+{
+    return m_settings->value("session/actions/recent").toStringList();
+}
+
+
+void NanonSession::saveRecentAction(QString actionName)
+{
+
+    QVariant recentActionsVariant = m_settings->value("session/actions/recent");
+    QList<QString> recentActions = recentActionsVariant.toStringList();
+
+    int currentIndex = recentActions.indexOf(actionName);
+    if (currentIndex != -1) {
+        recentActions.move(currentIndex, 0);
+    } else {
+        recentActions.push_front(actionName);
+        if (recentActions.length() > 10) {
+            recentActions.pop_back();
+        }
+    }
+
+    m_settings->setValue("session/actions/recent", recentActions);
+}
+
+
 void NanonSession::saveDocument(widgets::NanonDocument *document)
 {
     auto serializedDocument = document->serialize();

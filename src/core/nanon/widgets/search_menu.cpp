@@ -15,8 +15,24 @@
 using namespace nanon::widgets;
 
 
+
 SearchMenu::SearchMenu(QList<commands::NanonAction*> &actions, QMenu *parent)
     : NanonMenu(parent)
+{
+    setupActions(actions);
+}
+
+
+SearchMenu::SearchMenu(QList<commands::NanonAction*> &actions, QSharedPointer<NanonSession> session, QMenu *parent)
+    : NanonMenu(parent)
+{
+    m_session = session;
+    setupActions(actions);
+}
+
+
+
+void SearchMenu::setupActions(QList<commands::NanonAction*> &actions)
 {
     // Create the search bar
     m_searchBar = new QLineEdit(this);
@@ -29,7 +45,7 @@ SearchMenu::SearchMenu(QList<commands::NanonAction*> &actions, QMenu *parent)
     searchAction->setDefaultWidget(m_searchBar);
     addAction(searchAction);
 
-    setupActions(actions);
+    NanonMenu::setupActions(actions);
 
     // Styling
     configurePalette();
@@ -90,7 +106,7 @@ bool SearchMenu::eventFilter(QObject *watched, QEvent *event)
 
 void SearchMenu::moveSelection(int count) {
     QModelIndex selection = m_view->selectionModel()->currentIndex();
-    QModelIndex newIndex = m_model->index(selection.row() + count, selection.column());
+    QModelIndex newIndex = m_proxyModel->index(selection.row() + count, selection.column());
     if (newIndex.isValid()) {
         m_view->setCurrentIndex(newIndex);
     }
@@ -99,9 +115,9 @@ void SearchMenu::moveSelection(int count) {
 
 void SearchMenu::onSearchTextChanged(const QString &text)
 {
-    m_model->setFilterFixedString(text);
+    m_proxyModel->setFilterFixedString(text);
 
-    QModelIndex firstIndex = m_model->index(0, 0);
+    QModelIndex firstIndex = m_proxyModel->index(0, 0);
     if (firstIndex.isValid()) {
         m_view->setCurrentIndex(firstIndex);
     }
